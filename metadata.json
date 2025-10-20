@@ -1,0 +1,5 @@
+{
+  "name": "Gestor de Certificados",
+  "description": "Una aplicación para crear y gestionar certificados de peso y calidad para exportaciones de café.",
+  "requestFramePermissions": []
+}

@@ -25,11 +25,57 @@ jobs:
             npm install
           fi
 
-      - name: 🏗️ Build (HTML único para GAS)
-        run: npm run build:inline
+      - name: 🏗️ Build (detecta comando disponible)
+        shell: bash
+        run: |
+          set -e
+          echo "Scripts disponibles:"
+          npm run || true
+          if npm run | grep -q "build:inline"; then
+            echo "→ npm run build:inline"
+            npm run build:inline
+          elif npm run | grep -q "build:gas"; then
+            echo "→ npm run build:gas"
+            npm run build:gas
+          elif npm run | grep -E -q "^  build "; then
+            echo "→ npm run build"
+            npm run build
+          elif npx --yes vite -v >/dev/null 2>&1; then
+            echo "→ npx vite build"
+            npx --yes vite build
+          elif [ -f esbuild.config.mjs ]; then
+            echo "→ node esbuild.config.mjs inline || node esbuild.config.mjs"
+            node esbuild.config.mjs inline || node esbuild.config.mjs
+          else
+            echo "❌ No encontré un comando de build compatible (build:inline, build:gas, build, vite, esbuild.config.mjs)."
+            exit 1
+          fi
 
-      - name: 📤 Upload artifact (dist/)
+      - name: 🔎 Localizar salida (Index.html)
+        shell: bash
+        run: |
+          set -e
+          OUT=""
+          for d in dist build out public; do
+            if [ -d "$d" ]; then
+              echo "Carpeta $d:"
+              ls -la "$d"
+              if [ -f "$d/Index.html" ] || [ -f "$d/index.html" ]; then
+                OUT="$d"
+                break
+              fi
+            fi
+          done
+          if [ -z "$OUT" ]; then
+            echo "⚠️ No encontré Index.html; subiré dist/ si existe para revisar."
+            if [ -d dist ]; then echo "DIST=dist" >> $GITHUB_ENV; else echo "DIST=." >> $GITHUB_ENV; fi
+          else
+            echo "✅ Encontrado Index.html en $OUT"
+            echo "DIST=$OUT" >> $GITHUB_ENV
+          fi
+
+      - name: 📤 Subir artifact
         uses: actions/upload-artifact@v4
         with:
           name: gas-build
-          path: dist/
+          path: ${{ env.DIST }}/

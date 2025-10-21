@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Certificate, PackageItem, CertificateType } from '../types';
 import { ArrowLeftIcon, PlusIcon, TrashIcon, DocumentDuplicateIcon } from './Icons';
+import { companyData } from '../utils/companyData';
 
 interface ShipmentFormProps {
   onSubmit: (data: Omit<Certificate, 'id' | 'type' | 'certificateNumber'>, types: CertificateType[]) => void;
@@ -30,7 +31,7 @@ const ShipmentForm: React.FC<ShipmentFormProps> = ({ onSubmit, onCancel }) => {
     const defaultPackage: PackageItem = { id: new Date().toISOString(), type: 'BAGS', quantity: '', unitWeight: '', grossUnitWeight: '', marks: '', quality: '' };
     setFormData({
       product: 'GREEN COFFEE, CROP 2024/2025',
-      shipper: `DIZANO, S.A.\n1RA. AV. A 4-33 GRANJAS LA JOYA ZONA 8, SAN MIGUEL PETAPA, GUATEMALA, GUATEMALA`,
+      shipper: companyData.dizano.shipperText,
       consignee: `Jacobs Douwe Egberts C&T Utrecht\nVleutensevaart 35 Utrecht\n3532 AD, The Netherlands`,
       notify: `Jacobs Douwe Egberts C&T Utrecht\nVleutensevaart 35 Utrecht\n3532 AD, The Netherlands`,
       exporterName: 'Yony Roquel',

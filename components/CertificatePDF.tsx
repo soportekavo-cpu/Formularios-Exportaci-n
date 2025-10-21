@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Certificate } from '../types';
+import { getCompanyInfo } from '../utils/companyData';
 
 interface CertificatePDFProps {
   certificate: Certificate;
@@ -8,6 +9,8 @@ interface CertificatePDFProps {
 
 const CertificatePDF: React.FC<CertificatePDFProps> = ({ certificate, logo }) => {
   const numPackages = certificate.packages?.length || 0;
+  const companyInfo = getCompanyInfo(certificate.company);
+  const isProben = certificate.company === 'proben';
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
@@ -18,15 +21,6 @@ const CertificatePDF: React.FC<CertificatePDFProps> = ({ certificate, logo }) =>
   // FIX: Added a robust number formatting function to handle potentially non-numeric values.
   const formatNumber = (value: unknown): string => {
     return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value) || 0);
-  };
-
-  const headerFooterInfo = {
-    name: 'DIZANO, S.A.',
-    address1: '1ra. Av. A 4-33 Granjas La Joya',
-    address2: 'Zona 8 San Miguel Petapa',
-    cityState: 'Guatemala, Guatemala.',
-    phone: '(502) 2319-8700',
-    email: 'exportaciones@cafelasregiones.gt'
   };
   
   const subtotals = (certificate.packages || []).reduce((acc, pkg) => {
@@ -59,24 +53,26 @@ const CertificatePDF: React.FC<CertificatePDFProps> = ({ certificate, logo }) =>
                 <tr>
                   <td style={{ width: '30%', verticalAlign: 'middle', textAlign: 'left' }}>
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ height: '80px', width: '80px', display: 'inline-block', padding: '4px' }}>
+                      <div style={{ height: '80px', width: isProben ? '160px' : '80px', display: 'inline-block', padding: '4px' }}>
                         {logo ? (
                           <img src={logo} alt="Company Logo" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                         ) : (
-                          <div style={{ height: 'calc(100% - 8px)', width: 'calc(100% - 8px)', border: '4px solid #3B82F6', borderRadius: '12px' }}></div>
+                          <div style={{ height: 'calc(100% - 8px)', width: 'calc(100% - 8px)', border: '4px solid #3B82F6', borderRadius: isProben ? '0' : '12px' }}></div>
                         )}
                       </div>
-                      <h2 style={{ textAlign: 'center', fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.1em', marginTop: '8px', color: '#1f2937', margin: 0 }}>
-                        LAS REGIONES
-                      </h2>
+                      {!isProben && (
+                        <h2 style={{ textAlign: 'center', fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.1em', marginTop: '8px', color: '#1f2937', margin: 0 }}>
+                          LAS REGIONES
+                        </h2>
+                      )}
                     </div>
                   </td>
                   <td style={{ width: '70%', verticalAlign: 'middle', textAlign: 'right', fontSize: '10px', color: '#4b5563' }}>
-                    <p style={{ fontWeight: '700', fontSize: '12px', color: '#1f2937', margin: '0 0 2px 0' }}>{headerFooterInfo.name}</p>
-                    <p style={{ margin: '0 0 2px 0' }}>{headerFooterInfo.address1}, {headerFooterInfo.address2}</p>
-                    <p style={{ margin: '0 0 2px 0' }}>{headerFooterInfo.cityState}</p>
-                    <p style={{ margin: '0 0 2px 0' }}>P: {headerFooterInfo.phone}</p>
-                    <p style={{ margin: '0' }}>E: {headerFooterInfo.email}</p>
+                    <p style={{ fontWeight: '700', fontSize: '12px', color: '#1f2937', margin: '0 0 2px 0' }}>{companyInfo.name}</p>
+                    <p style={{ margin: '0 0 2px 0' }}>{companyInfo.address1}, {companyInfo.address2}</p>
+                    <p style={{ margin: '0 0 2px 0' }}>{companyInfo.cityState}</p>
+                    <p style={{ margin: '0 0 2px 0' }}>P: {companyInfo.phone}</p>
+                    <p style={{ margin: '0' }}>E: {companyInfo.email}</p>
                   </td>
                 </tr>
               </tbody>
@@ -93,11 +89,11 @@ const CertificatePDF: React.FC<CertificatePDFProps> = ({ certificate, logo }) =>
                             <div style={{ width: '96px' }}></div>
                         </td>
                         <td style={{ width: '70%', verticalAlign: 'top', textAlign: 'right', fontSize: '10px', color: '#4b5563', paddingTop: '8px' }}>
-                            <p style={{ fontWeight: '700', fontSize: '12px', color: '#1f2937', margin: '0 0 2px 0' }}>{headerFooterInfo.name}</p>
-                            <p style={{ margin: '0 0 2px 0' }}>{headerFooterInfo.address1}, {headerFooterInfo.address2}</p>
-                            <p style={{ margin: '0 0 2px 0' }}>{headerFooterInfo.cityState}</p>
-                            <p style={{ margin: '0 0 2px 0' }}>P: {headerFooterInfo.phone}</p>
-                            <p style={{ margin: '0' }}>E: {headerFooterInfo.email}</p>
+                            <p style={{ fontWeight: '700', fontSize: '12px', color: '#1f2937', margin: '0 0 2px 0' }}>{companyInfo.name}</p>
+                            <p style={{ margin: '0 0 2px 0' }}>{companyInfo.address1}, {companyInfo.address2}</p>
+                            <p style={{ margin: '0 0 2px 0' }}>{companyInfo.cityState}</p>
+                            <p style={{ margin: '0 0 2px 0' }}>P: {companyInfo.phone}</p>
+                            <p style={{ margin: '0' }}>E: {companyInfo.email}</p>
                         </td>
                     </tr>
                 </tbody>

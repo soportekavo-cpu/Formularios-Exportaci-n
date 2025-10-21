@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Certificate, BankAccount } from '../types';
+import type { Certificate, BankAccount, Company } from '../types';
 import { ArrowLeftIcon, PlusIcon, TrashIcon, GripVerticalIcon } from './Icons';
 import BankAccountManager from './BankAccountManager';
 
@@ -9,12 +9,13 @@ interface PaymentInstructionFormProps {
   onCancel: () => void;
   bankAccounts: BankAccount[];
   setBankAccounts: React.Dispatch<React.SetStateAction<BankAccount[]>>;
+  activeCompany: Company;
 }
 
 const inputStyles = "block w-full text-base text-gray-900 bg-gray-50 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 hover:bg-white focus:bg-white transition-colors duration-200 px-4 py-3";
 const readOnlyInputStyles = `${inputStyles} bg-gray-200 cursor-not-allowed`;
 
-const PaymentInstructionForm: React.FC<PaymentInstructionFormProps> = ({ initialData, onSubmit, onCancel, bankAccounts, setBankAccounts }) => {
+const PaymentInstructionForm: React.FC<PaymentInstructionFormProps> = ({ initialData, onSubmit, onCancel, bankAccounts, setBankAccounts, activeCompany }) => {
   const [formData, setFormData] = useState<Partial<Certificate>>(initialData);
   const [newDocument, setNewDocument] = useState('');
   const [isBankManagerOpen, setIsBankManagerOpen] = useState(false);
@@ -80,6 +81,7 @@ const PaymentInstructionForm: React.FC<PaymentInstructionFormProps> = ({ initial
           onClose={() => setIsBankManagerOpen(false)}
           bankAccounts={bankAccounts}
           setBankAccounts={setBankAccounts}
+          activeCompany={activeCompany}
         />
       )}
       <div className="p-4 sm:p-6 lg:p-8">

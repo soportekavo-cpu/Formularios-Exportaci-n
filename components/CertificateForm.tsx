@@ -41,7 +41,8 @@ const RichTextEditor = ({ value, onChange }: { value?: string, onChange: (html: 
         }
     };
     
-    const ToolButton = ({ onClick, children }: { onClick: () => void, children: React.ReactNode }) => (
+    // FIX: Changed children to be optional to resolve TypeScript error.
+    const ToolButton = ({ onClick, children }: { onClick: () => void, children?: React.ReactNode }) => (
         <button 
             type="button" 
             onMouseDown={(e) => { e.preventDefault(); onClick(); }}
@@ -235,6 +236,7 @@ const CertificateForm: React.FC<CertificateFormProps> = ({ initialData, onSubmit
 
   const isEditing = !!initialData.id;
   const isQualityCert = formData.type === 'quality';
+  const isWeightCert = formData.type === 'weight';
   const isPackingList = formData.type === 'packing';
   const isPorte = formData.type === 'porte';
 
@@ -309,7 +311,14 @@ const CertificateForm: React.FC<CertificateFormProps> = ({ initialData, onSubmit
                 {!isPackingList && (
                   <div>
                       <label htmlFor="shipper" className="block text-sm font-medium text-gray-800 mb-2">Seller</label>
-                      <textarea id="shipper" name="shipper" value={formData.shipper || ''} onChange={handleChange} required className={textareaStyles}></textarea>
+                      <textarea
+                        id="shipper"
+                        name="shipper"
+                        value={formData.shipper || ''}
+                        onChange={handleChange}
+                        required
+                        className={textareaStyles}
+                      ></textarea>
                   </div>
                 )}
                 <div className={!isPackingList ? 'md:col-span-2' : ''}>

@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Certificate, BankAccount } from '../types';
+import { getCompanyInfo } from '../utils/companyData';
 
 interface PaymentInstructionPDFProps {
   certificate: Certificate;
@@ -8,6 +9,9 @@ interface PaymentInstructionPDFProps {
 }
 
 const PaymentInstructionPDF: React.FC<PaymentInstructionPDFProps> = ({ certificate, bankAccounts, logo }) => {
+  const companyInfo = getCompanyInfo(certificate.company);
+  const isProben = certificate.company === 'proben';
+
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString + 'T00:00:00');
@@ -29,8 +33,8 @@ const PaymentInstructionPDF: React.FC<PaymentInstructionPDFProps> = ({ certifica
                   <div style={{ height: '96px' }}></div>
               )}
           </div>
-          <h2 style={{ fontSize: '16px', fontWeight: 'bold', letterSpacing: '0.1em', marginTop: '8px', margin: '8px 0 0 0' }}>LAS REGIONES</h2>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Dizano, S.A.</h1>
+          {!isProben && <h2 style={{ fontSize: '16px', fontWeight: 'bold', letterSpacing: '0.1em', marginTop: '8px', margin: '8px 0 0 0' }}>LAS REGIONES</h2>}
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{companyInfo.name}</h1>
         </div>
       </header>
       

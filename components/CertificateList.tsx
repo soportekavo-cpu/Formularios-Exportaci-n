@@ -15,20 +15,73 @@ interface CertificateListProps {
 
 const CertificateList: React.FC<CertificateListProps> = ({ certificates, activeCertType, onAdd, onEdit, onView, onDelete, onDuplicate, onCreatePaymentInstruction }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' }>({
+    key: 'certificateDate',
+    direction: 'descending',
+  });
 
-  const filteredCertificates = useMemo(() => {
-    if (!searchTerm) {
-      return certificates;
+  const requestSort = (key: string) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
     }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedAndFilteredCertificates = useMemo(() => {
+    let sortableItems = [...certificates];
+
+    if (sortConfig.key) {
+      sortableItems.sort((a, b) => {
+        const key = sortConfig.key;
+        let aValue: any;
+        let bValue: any;
+
+        if (key === 'totalPackages') {
+            aValue = (a.packages || []).reduce((sum, p) => sum + Number(p.quantity || 0), 0);
+            bValue = (b.packages || []).reduce((sum, p) => sum + Number(p.quantity || 0), 0);
+        } else {
+            aValue = a[key as keyof Certificate];
+            bValue = b[key as keyof Certificate];
+        }
+        
+        aValue = aValue ?? '';
+        bValue = bValue ?? '';
+
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+             if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
+             if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
+             return 0;
+        }
+        
+        if (key === 'certificateDate' || key === 'shipmentDate') {
+            const dateA = aValue ? new Date(aValue + 'T00:00:00').getTime() : 0;
+            const dateB = bValue ? new Date(bValue + 'T00:00:00').getTime() : 0;
+            if (dateA < dateB) return sortConfig.direction === 'ascending' ? -1 : 1;
+            if (dateA > dateB) return sortConfig.direction === 'ascending' ? 1 : -1;
+            return 0;
+        }
+
+        return sortConfig.direction === 'ascending'
+            ? String(aValue).localeCompare(String(bValue))
+            : String(bValue).localeCompare(String(aValue));
+      });
+    }
+
+    if (!searchTerm) {
+      return sortableItems;
+    }
+
     const lowercasedFilter = searchTerm.toLowerCase();
-    return certificates.filter(cert => {
+    return sortableItems.filter(cert => {
       const qualityString = (cert.packages || [])
         .map(p => p.quality)
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
         
-      return (cert.consignee || '').toLowerCase().includes(lowercasedFilter) ||
+      return (cert.company || 'dizano').toLowerCase().includes(lowercasedFilter) ||
+        (cert.consignee || '').toLowerCase().includes(lowercasedFilter) ||
         (cert.customerName || '').toLowerCase().includes(lowercasedFilter) ||
         (cert.containerNo || '').toLowerCase().includes(lowercasedFilter) ||
         (cert.driverName || '').toLowerCase().includes(lowercasedFilter) ||
@@ -37,7 +90,18 @@ const CertificateList: React.FC<CertificateListProps> = ({ certificates, activeC
         (cert.certificateNumber || '').toLowerCase().includes(lowercasedFilter) ||
         qualityString.includes(lowercasedFilter);
     });
-  }, [certificates, searchTerm]);
+  }, [certificates, searchTerm, sortConfig]);
+
+  const SortableHeader: React.FC<{ sortKey: string; children: React.ReactNode; className?: string }> = ({ sortKey, children, className }) => (
+    <th scope="col" className={`${className} cursor-pointer transition-colors hover:bg-gray-50`} onClick={() => requestSort(sortKey)}>
+      <div className="flex items-center gap-x-1">
+        <span>{children}</span>
+        {sortConfig.key === sortKey && (
+          <span className="text-gray-400 text-xs">{sortConfig.direction === 'ascending' ? '▲' : '▼'}</span>
+        )}
+      </div>
+    </th>
+  );
 
   const isWeight = activeCertType === 'weight';
   const isQuality = activeCertType === 'quality';
@@ -50,7 +114,6 @@ const CertificateList: React.FC<CertificateListProps> = ({ certificates, activeC
   let description = '';
   let searchPlaceholder = 'Buscar...';
   let addButtonText = '';
-
 
   if (isWeight) {
     title = 'Certificados de Peso';
@@ -83,7 +146,6 @@ const CertificateList: React.FC<CertificateListProps> = ({ certificates, activeC
     searchPlaceholder = 'Buscar por cliente, contrato o Nº de factura...';
     addButtonText = 'Crear Instrucción';
   }
-
 
   return (
     <div className="pt-8">
@@ -122,35 +184,36 @@ const CertificateList: React.FC<CertificateListProps> = ({ certificates, activeC
       <div className="mt-8 flow-root">
         <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
           <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-            {filteredCertificates.length > 0 ? (
+            {sortedAndFilteredCertificates.length > 0 ? (
               <table className="min-w-full divide-y divide-gray-300">
                 <thead>
                   <tr>
                     {isInvoice ? (
                       <>
-                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">Fecha</th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Nº Invoice</th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Bill To</th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Total</th>
+                        <SortableHeader sortKey="certificateDate" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">Fecha</SortableHeader>
+                        <SortableHeader sortKey="invoiceNo" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Nº Invoice</SortableHeader>
+                        <SortableHeader sortKey="customerName" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Bill To</SortableHeader>
+                        <SortableHeader sortKey="totalAmount" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Total</SortableHeader>
                       </>
                     ) : isPayment ? (
                       <>
-                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">Fecha</th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Cliente</th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Contrato</th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Monto</th>
+                        <SortableHeader sortKey="certificateDate" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">Fecha</SortableHeader>
+                        <SortableHeader sortKey="customerName" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Cliente</SortableHeader>
+                        <SortableHeader sortKey="contractNo" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Contrato</SortableHeader>
+                        <SortableHeader sortKey="totalAmount" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Monto</SortableHeader>
                       </>
                     ) : (
                       <>
-                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">{isPorte ? 'Destino' : 'Consignatario'}</th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">{isPorte ? 'Piloto' : 'Nº de Contenedor'}</th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">{isPacking ? 'Fecha de Empaque' : isPorte ? 'Fecha' : 'Fecha de Embarque'}</th>
-                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                          {isWeight ? 'Peso Neto (kgs)' 
-                            : isQuality ? 'Calidad' 
-                            : isPacking ? 'Total Bultos'
-                            : 'Peso Neto (kgs)'}
-                        </th>
+                        <SortableHeader sortKey="consignee" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">{isPorte ? 'Destino' : 'Consignatario'}</SortableHeader>
+                        <SortableHeader sortKey={isPorte ? 'driverName' : 'containerNo'} className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">{isPorte ? 'Piloto' : 'Nº de Contenedor'}</SortableHeader>
+                        <SortableHeader sortKey={isPacking || isPorte ? 'certificateDate' : 'shipmentDate'} className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">{isPacking ? 'Fecha de Empaque' : isPorte ? 'Fecha' : 'Fecha de Embarque'}</SortableHeader>
+                        {isQuality ? (
+                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Calidad</th>
+                        ) : (
+                            <SortableHeader sortKey={isWeight || isPorte ? 'totalNetWeight' : 'totalPackages'} className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                                {isWeight || isPorte ? 'Peso Neto (kgs)' : 'Total Bultos'}
+                            </SortableHeader>
+                        )}
                       </>
                     )}
                     <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-0">
@@ -159,7 +222,7 @@ const CertificateList: React.FC<CertificateListProps> = ({ certificates, activeC
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {filteredCertificates.map((cert) => (
+                  {sortedAndFilteredCertificates.map((cert) => (
                     <tr key={cert.id} className="hover:bg-gray-50">
                       {isInvoice ? (
                           <>

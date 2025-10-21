@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import type { Certificate, CertificateType, PackageItem, BankAccount } from './types';
+import React, { useState, useMemo, useEffect } from 'react';
+import type { Certificate, CertificateType, PackageItem, BankAccount, Company } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import CertificateList from './components/CertificateList';
 import CertificateForm from './components/CertificateForm';
@@ -19,6 +19,7 @@ import PackingListPDF from './components/PackingListPDF';
 import CartaPortePDF from './components/CartaPortePDF';
 import InvoicePDF from './components/InvoicePDF';
 import PaymentInstructionPDF from './components/PaymentInstructionPDF';
+import { companyData, getCompanyInfo } from './utils/companyData';
 
 type View = 'list' | 'form' | 'view' | 'new_shipment';
 
@@ -65,15 +66,33 @@ const App: React.FC = () => {
       notes: ''
     }
   ]);
-  const [logo, setLogo] = useLocalStorage<string | null>('companyLogo', null);
+  const [logos, setLogos] = useLocalStorage<{ dizano: string | null; proben: string | null }>('companyLogos', { dizano: null, proben: null });
   
-  const certificates = Array.isArray(storedCertificates) ? storedCertificates : [];
-
+  const [activeCompany, setActiveCompany] = useState<Company>('dizano');
   const [currentView, setCurrentView] = useState<View>('list');
   const [activeCertType, setActiveCertType] = useState<CertificateType>('weight');
   const [selectedCertificateId, setSelectedCertificateId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [duplicateSourceId, setDuplicateSourceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Migrate old data structure on first load
+    const needsMigration = storedCertificates.some(c => !c.company);
+    if (needsMigration) {
+      setCertificates(certs => certs.map(c => ({ ...c, company: c.company || 'dizano' })));
+    }
+
+    const oldLogo = localStorage.getItem('companyLogo');
+    if (oldLogo) {
+      try {
+        const parsedOldLogo = JSON.parse(oldLogo);
+        setLogos(prev => ({ ...prev, dizano: prev.dizano || parsedOldLogo }));
+      } catch(e) { console.error("Failed to parse old logo", e); }
+      localStorage.removeItem('companyLogo');
+    }
+  }, []); // Run only once
+
+  const certificates = Array.isArray(storedCertificates) ? storedCertificates : [];
 
   const handleAdd = () => {
     setSelectedCertificateId(null);
@@ -132,6 +151,7 @@ const App: React.FC = () => {
 
   const handleSubmitForm = (data: Certificate) => {
     let savedCertificate: Certificate | undefined;
+    const companyInfo = getCompanyInfo(data.company);
     
     if (data.id) {
       savedCertificate = data;
@@ -143,16 +163,26 @@ const App: React.FC = () => {
       const newCert: Certificate = { 
         ...data, 
         id: new Date().toISOString(), 
+        company: activeCompany,
         type: activeCertType,
         certificateDate: data.certificateDate || new Date().toISOString().split('T')[0],
         packages: data.packages || [], // Ensure packages is not undefined
       };
       
       if (!isPayment) {
-        const prefix = isInvoice ? 'EXP' : activeCertType === 'porte' ? 'CP' : 'CERT';
+        let prefix: string;
+        switch(activeCertType) {
+            case 'invoice': prefix = 'EXP'; break;
+            case 'porte': prefix = 'CP'; break;
+            case 'weight': prefix = 'WC'; break;
+            case 'quality': prefix = 'QC'; break;
+            case 'packing': prefix = 'PL'; break;
+            default: prefix = 'CERT';
+        }
+        
         const currentYear = new Date().getFullYear().toString();
         
-        const certsOfType = certificates.filter(c => c.type === activeCertType);
+        const certsOfType = certificates.filter(c => c.type === activeCertType && c.company === activeCompany);
         const numberField = isInvoice ? 'invoiceNo' : 'certificateNumber';
 
         const certsThisYear = certsOfType.filter(c => {
@@ -191,34 +221,35 @@ const App: React.FC = () => {
     if(savedCertificate) {
        if (savedCertificate.type === 'packing') {
           printComponent(
-            <PackingListPDF certificate={savedCertificate} logo={logo} />,
+            <PackingListPDF certificate={savedCertificate} logo={logos[savedCertificate.company]} />,
             `PackingList-${savedCertificate.certificateNumber}`,
-            { orientation: 'portrait' }
+            { orientation: 'portrait', showFooter: true, companyInfo }
           );
         } else if (savedCertificate.type === 'porte') {
           printComponent(
-            <CartaPortePDF certificate={savedCertificate} logo={logo} />,
+            <CartaPortePDF certificate={savedCertificate} logo={logos[savedCertificate.company]} />,
             `CartaPorte-${savedCertificate.certificateNumber}`,
-            { orientation: 'portrait' }
+            { orientation: 'portrait', showFooter: true, companyInfo }
           );
         } else if (savedCertificate.type === 'invoice') {
            printComponent(
-            <InvoicePDF certificate={savedCertificate} logo={logo} />,
+            <InvoicePDF certificate={savedCertificate} logo={logos[savedCertificate.company]} />,
             `Invoice-${savedCertificate.invoiceNo}`,
-            { orientation: 'portrait', showFooter: true }
+            { orientation: 'portrait', showFooter: true, companyInfo }
           );
         } else if (savedCertificate.type === 'payment') {
           printComponent(
-            <PaymentInstructionPDF certificate={savedCertificate} bankAccounts={bankAccounts} logo={logo} />,
+            <PaymentInstructionPDF certificate={savedCertificate} bankAccounts={bankAccounts} logo={logos[savedCertificate.company]} />,
             `PaymentInstruction-${savedCertificate.contractNo}`,
-            { orientation: 'portrait', showFooter: true }
+            { orientation: 'portrait', showFooter: true, companyInfo }
           )
         }
         else {
           const certificateTypeForFilename = savedCertificate.type === 'quality' ? 'Quality' : 'Weight';
           printComponent(
-            <CertificatePDF certificate={savedCertificate} logo={logo} />,
-            `${certificateTypeForFilename}-Certificate-${savedCertificate.certificateNumber}`
+            <CertificatePDF certificate={savedCertificate} logo={logos[savedCertificate.company]} />,
+            `${certificateTypeForFilename}-Certificate-${savedCertificate.certificateNumber}`,
+            { showFooter: true, companyInfo }
           );
         }
     }
@@ -231,11 +262,24 @@ const App: React.FC = () => {
   const handleCreateShipment = (data: Omit<Certificate, 'id' | 'type' | 'certificateNumber'>, types: CertificateType[]) => {
       const createdCerts: Certificate[] = [];
       let newCertificates = [...certificates];
+      const companyInfo = getCompanyInfo(activeCompany);
 
       types.forEach(type => {
-        const prefix = 'CERT'; 
+        let prefix: string;
+        switch (type) {
+          case 'weight': prefix = 'WC'; break;
+          case 'quality': prefix = 'QC'; break;
+          case 'packing': prefix = 'PL'; break;
+          default: prefix = 'CERT';
+        }
+        
         const currentYear = new Date().getFullYear().toString();
-        const certsThisYear = newCertificates.filter(c => c.certificateNumber && c.certificateNumber.startsWith(`${prefix}-${currentYear}`));
+        const certsOfType = newCertificates.filter(c => c.type === type && c.company === activeCompany);
+        
+        const certsThisYear = certsOfType.filter(c => {
+            const num = c.certificateNumber;
+            return num && num.startsWith(`${prefix}-${currentYear}`);
+        });
         
         let maxCounter = 0;
         certsThisYear.forEach(c => {
@@ -254,6 +298,7 @@ const App: React.FC = () => {
         const newCert: Certificate = {
             ...data,
             id: `${new Date().toISOString()}-${type}`,
+            company: activeCompany,
             type: type,
             certificateNumber: newCertificateNumber,
             certificateDate: data.certificateDate || new Date().toISOString().split('T')[0],
@@ -277,15 +322,16 @@ const App: React.FC = () => {
       createdCerts.forEach(cert => {
           if (cert.type === 'packing') {
             printComponent(
-                <PackingListPDF certificate={cert} logo={logo} />,
+                <PackingListPDF certificate={cert} logo={logos[cert.company]} />,
                 `PackingList-${cert.certificateNumber}`,
-                { orientation: 'portrait' }
+                { orientation: 'portrait', showFooter: true, companyInfo }
             );
           } else {
             const certificateTypeForFilename = cert.type === 'quality' ? 'Quality' : 'Weight';
             printComponent(
-                <CertificatePDF certificate={cert} logo={logo} />,
-                `${certificateTypeForFilename}-Certificate-${cert.certificateNumber}`
+                <CertificatePDF certificate={cert} logo={logos[cert.company]} />,
+                `${certificateTypeForFilename}-Certificate-${cert.certificateNumber}`,
+                { showFooter: true, companyInfo }
             );
           }
       });
@@ -294,6 +340,8 @@ const App: React.FC = () => {
   };
 
   const initialFormData = useMemo((): Partial<Certificate> => {
+    const companyInfo = companyData[activeCompany];
+
     if (activeCertType === 'payment') {
       if (duplicateSourceId) {
         const sourceInvoice = certificates.find(c => c.id === duplicateSourceId);
@@ -316,10 +364,12 @@ const App: React.FC = () => {
             'Fumigation Certificate',
           ];
           
-          const defaultBankId = bankAccounts.length > 0 ? bankAccounts[0].id : undefined;
+          const defaultBank = bankAccounts.find(b => b.beneficiary === companyInfo.beneficiary);
+          const defaultBankId = defaultBank ? defaultBank.id : bankAccounts.length > 0 ? bankAccounts[0].id : undefined;
 
           return {
             type: 'payment',
+            company: activeCompany,
             certificateDate: new Date().toISOString().split('T')[0],
             customerName: sourceInvoice.customerName,
             consignee: sourceInvoice.consignee,
@@ -338,6 +388,7 @@ const App: React.FC = () => {
       if (selectedCertificateId) return certificates.find(c => c.id === selectedCertificateId) || {};
       return { 
         type: 'payment', 
+        company: activeCompany,
         attachedDocuments: [], 
         packages: [], 
         bankAccountId: bankAccounts.length > 0 ? bankAccounts[0].id : undefined,
@@ -357,6 +408,7 @@ const App: React.FC = () => {
             
             const duplicatedData: Partial<Certificate> = {
                 ...rest,
+                company: activeCompany,
                 packages: duplicatedPackages,
                 adjustments: duplicatedAdjustments,
                 advances: duplicatedAdvances,
@@ -365,6 +417,10 @@ const App: React.FC = () => {
                 shipmentDate: '',
                 billOfLadingNo: '',
                 containerNo: '',
+            }
+
+            if (activeCertType === 'weight' || activeCertType === 'quality') {
+                duplicatedData.shipper = companyData.dizano.shipperText;
             }
 
             if (activeCertType === 'packing') delete duplicatedData.shipper;
@@ -378,6 +434,7 @@ const App: React.FC = () => {
         const defaultInvPackage: PackageItem = { id: new Date().toISOString(), type: 'qqs.', quantity: '', unitWeight: '', marks: '', description: '', partidaNo: '', unitValue: '' };
         return {
             type: 'invoice',
+            company: activeCompany,
             certificateDate: new Date().toISOString().split('T')[0],
             consignee: '', // Bill To
             billOfLadingNo: '',
@@ -388,7 +445,7 @@ const App: React.FC = () => {
         };
     }
     
-    const commonDefaults = { product: 'GREEN COFFEE, CROP 2024/2025' };
+    const commonDefaults = { product: 'GREEN COFFEE, CROP 2024/2025', company: activeCompany };
     
     if (activeCertType === 'packing') {
         const defaultPackingPackage: PackageItem = { id: new Date().toISOString(), type: 'BAGS', quantity: '', unitWeight: '', grossUnitWeight: '', marks: '' };
@@ -405,7 +462,7 @@ const App: React.FC = () => {
     if (activeCertType === 'porte') {
         const defaultPortePackage: PackageItem = { id: new Date().toISOString(), type: 'SACO', quantity: '', unitWeight: '', tareUnitWeight: '', grossUnitWeight: '', marks: '', contains: 'CAFE ORO' };
         return {
-            type: 'porte', certificateDate: new Date().toISOString().split('T')[0], place: 'Guatemala', consignee: 'PUERTO BARRIOS',
+            type: 'porte', company: activeCompany, certificateDate: new Date().toISOString().split('T')[0], place: 'Guatemala', consignee: 'PUERTO BARRIOS',
             transportCompany: 'Transportes Nexus Cargo, S.A.', driverName: 'JONATAN MAURICIO DIAZ CRUZ', driverLicense: '2277 35579 0101',
             licensePlate: 'C133BWG', shippingLine: 'GARDINER, 5SF V.541S', destination: 'PUERTO BARRIOS', sealNo: 'GT0079885',
             containerNo: 'MRKU8488533', observations: `EN CASO DE EMERGENCIA LLAMAR AL 5417-5500 O 3761-2791<br>ENVASADO EN <b>GRAINPRO</b>`,
@@ -415,7 +472,7 @@ const App: React.FC = () => {
 
     const certDefaults = {
         ...commonDefaults,
-        shipper: `DIZANO, S.A.\n1RA. AV. A 4-33 GRANJAS LA JOYA ZONA 8, SAN MIGUEL PETAPA, GUATEMALA, GUATEMALA`,
+        shipper: companyInfo.shipperText,
         consignee: `Jacobs Douwe Egberts C&T Utrecht\nVleutensevaart 35 Utrecht\n3532 AD, The Netherlands`,
         notify: `Jacobs Douwe Egberts C&T Utrecht\nVleutensevaart 35 Utrecht\n3532 AD, The Netherlands`,
         exporterName: 'Yony Roquel',
@@ -428,7 +485,7 @@ const App: React.FC = () => {
 
     const defaultWeightPackage: PackageItem = { id: new Date().toISOString(), type: 'BAGS', quantity: '', unitWeight: '', marks: '' };
     return { ...certDefaults, type: 'weight', packages: [defaultWeightPackage] };
-  }, [activeCertType, selectedCertificateId, duplicateSourceId, certificates, bankAccounts]);
+  }, [activeCertType, selectedCertificateId, duplicateSourceId, certificates, bankAccounts, activeCompany]);
   
   const tabs: { name: string, type: CertificateType }[] = [
       { name: 'Certificados de Peso', type: 'weight' },
@@ -442,6 +499,9 @@ const App: React.FC = () => {
   const selectedCertificate = certificates.find(c => c.id === selectedCertificateId) || null;
 
   const renderCurrentView = () => {
+    const certCompany = selectedCertificate?.company || 'dizano';
+    const logoForCert = logos[certCompany];
+
     switch (currentView) {
         case 'new_shipment':
             return <ShipmentForm onSubmit={handleCreateShipment} onCancel={handleCancel} />;
@@ -450,21 +510,64 @@ const App: React.FC = () => {
                 return <InvoiceForm initialData={initialFormData} onSubmit={handleSubmitForm} onCancel={handleCancel} />;
             }
              if (activeCertType === 'payment') {
-                return <PaymentInstructionForm initialData={initialFormData} onSubmit={handleSubmitForm} onCancel={handleCancel} bankAccounts={bankAccounts} setBankAccounts={setBankAccounts} />;
+                return <PaymentInstructionForm initialData={initialFormData} onSubmit={handleSubmitForm} onCancel={handleCancel} bankAccounts={bankAccounts} setBankAccounts={setBankAccounts} activeCompany={activeCompany} />;
             }
             return <CertificateForm initialData={initialFormData} onSubmit={handleSubmitForm} onCancel={handleCancel} />;
         case 'view':
-            if (selectedCertificate?.type === 'packing') return <PackingListView certificate={selectedCertificate} onBack={handleCancel} logo={logo} />;
-            if (selectedCertificate?.type === 'porte') return <CartaPorteView certificate={selectedCertificate} onBack={handleCancel} logo={logo} />;
-            if (selectedCertificate?.type === 'invoice') return <InvoiceView certificate={selectedCertificate} onBack={handleCancel} logo={logo} />;
-            if (selectedCertificate?.type === 'payment') return <PaymentInstructionView certificate={selectedCertificate} onBack={handleCancel} bankAccounts={bankAccounts} logo={logo} />;
-            return <CertificateView certificate={selectedCertificate} onBack={handleCancel} logo={logo} />;
+            if (selectedCertificate?.type === 'packing') return <PackingListView certificate={selectedCertificate} onBack={handleCancel} logo={logoForCert} />;
+            if (selectedCertificate?.type === 'porte') return <CartaPorteView certificate={selectedCertificate} onBack={handleCancel} logo={logoForCert} />;
+            if (selectedCertificate?.type === 'invoice') return <InvoiceView certificate={selectedCertificate} onBack={handleCancel} logo={logoForCert} />;
+            if (selectedCertificate?.type === 'payment') return <PaymentInstructionView certificate={selectedCertificate} onBack={handleCancel} bankAccounts={bankAccounts} logo={logoForCert} />;
+            return <CertificateView certificate={selectedCertificate} onBack={handleCancel} logo={logoForCert} />;
         case 'list':
         default:
             return (
                 <div className="p-4 sm:p-6 lg:p-8">
-                    <LogoUploader logo={logo} setLogo={setLogo} />
-                    <div className="border-b border-gray-200">
+                    <div className="flex flex-col sm:flex-row gap-4 justify-between items-start mb-4">
+                        <div className="flex-grow">
+                            <h2 className="text-lg font-semibold text-gray-900">Empresa Activa</h2>
+                            <div className="isolate inline-flex rounded-md shadow-sm mt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveCompany('dizano')}
+                                    className={`relative inline-flex items-center rounded-l-md px-3 py-2 text-sm font-semibold ring-1 ring-inset ring-gray-300 focus:z-10 transition-colors duration-150 ${activeCompany === 'dizano' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-900 hover:bg-gray-50'}`}
+                                >
+                                    Dizano, S.A.
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveCompany('proben')}
+                                    className={`relative -ml-px inline-flex items-center rounded-r-md px-3 py-2 text-sm font-semibold ring-1 ring-inset ring-gray-300 focus:z-10 transition-colors duration-150 ${activeCompany === 'proben' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-900 hover:bg-gray-50'}`}
+                                >
+                                    Proben, S.A.
+                                </button>
+                            </div>
+                        </div>
+                        <div className="w-full sm:max-w-md flex-shrink-0">
+                          <LogoUploader 
+                            company={activeCompany}
+                            logo={logos[activeCompany]} 
+                            setLogo={(newLogo) => setLogos(prev => ({...prev, [activeCompany]: newLogo}))} 
+                          />
+                        </div>
+                    </div>
+                    
+                    <div className="sm:hidden">
+                      <label htmlFor="tabs" className="sr-only">Select a tab</label>
+                      <select
+                        id="tabs"
+                        name="tabs"
+                        className="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                        value={activeCertType}
+                        onChange={(e) => setActiveCertType(e.target.value as CertificateType)}
+                      >
+                        {tabs.map((tab) => (
+                          <option key={tab.type} value={tab.type}>{tab.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="hidden sm:block border-b border-gray-200">
                         <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
                             {tabs.map((tab) => (
                                 <button
@@ -483,7 +586,7 @@ const App: React.FC = () => {
                         </nav>
                     </div>
                     <CertificateList
-                      certificates={certificates.filter(c => c.type === activeCertType)}
+                      certificates={certificates.filter(c => (c.company || 'dizano') === activeCompany && c.type === activeCertType)}
                       activeCertType={activeCertType}
                       onAdd={handleAdd}
                       onEdit={handleEdit}

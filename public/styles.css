@@ -1,0 +1,14 @@
+/**
+ * Este archivo centralizará todos los estilos de la aplicación para el build final.
+ * El proceso de build deberá procesar este archivo con Tailwind CSS para generar
+ * el CSS estático basado en las clases de utilidad usadas en los componentes.
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Estilos globales personalizados pueden ir debajo de las directivas de Tailwind */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

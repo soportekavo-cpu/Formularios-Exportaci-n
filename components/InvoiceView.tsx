@@ -4,6 +4,7 @@ import { ArrowLeftIcon, PrintIcon, DownloadIcon } from './Icons';
 import { printComponent } from '../utils/printUtils';
 import InvoicePDF from './InvoicePDF';
 import { numberToWords } from '../utils/numberToWords';
+import { getCompanyInfo } from '../utils/companyData';
 
 interface InvoiceViewProps {
   certificate: Certificate | null;
@@ -42,6 +43,9 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ certificate, onBack, logo }) 
     );
   }
   
+  const companyInfo = getCompanyInfo(certificate.company);
+  const isProben = certificate.company === 'proben';
+  
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString + 'T00:00:00');
@@ -55,15 +59,6 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ certificate, onBack, logo }) 
       return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(num) || 0);
   }
   
-  const headerFooterInfo = {
-    name: 'DIZANO, S.A.',
-    address1: '1ra. Av. A 4-33 Granjas La Joya',
-    address2: 'Zona 8 San Miguel Petapa',
-    cityState: 'Guatemala, Guatemala.',
-    phone: '(502) 2319-8700',
-    email: 'exportaciones@cafelasregiones.gt'
-  };
-
   const subtotal = (certificate.packages || []).reduce((sum, p) => sum + (Number(p.quantity) || 0) * (Number(p.unitValue) || 0), 0);
   
   const InfoBlock: React.FC<{ label: string; children: React.ReactNode; className?: string }> = ({ label, children, className }) => (
@@ -96,23 +91,25 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ certificate, onBack, logo }) 
       <div id="invoice-paper" className="max-w-5xl mx-auto bg-white p-12 shadow-lg border border-gray-200 rounded-lg text-[#0d223f]">
         <header className="flex justify-between items-center">
           <div className="flex flex-col items-center">
-              <div className="h-20 w-20 flex items-center justify-center p-1">
+              <div className={`flex items-center justify-center p-1 ${isProben ? 'h-20 w-40' : 'h-20 w-20'}`}>
                   {logo ? (
                       <img src={logo} alt="Company Logo" className="max-h-full max-w-full object-contain" />
                   ) : (
-                      <div className="h-full w-full border-4 border-blue-500 rounded-xl"></div>
+                      <div className={`h-full w-full border-4 border-blue-500 ${isProben ? '' : 'rounded-xl'}`}></div>
                   )}
               </div>
-              <h2 className="text-sm font-bold tracking-[0.1em] mt-2" style={{ color: '#1f2937' }}>
-                  LAS REGIONES
-              </h2>
+              {!isProben && (
+                <h2 className="text-sm font-bold tracking-[0.1em] mt-2" style={{ color: '#1f2937' }}>
+                    LAS REGIONES
+                </h2>
+              )}
           </div>
           <div className="text-right text-[10px] text-gray-600 space-y-0.5">
-              <p className="font-bold text-xs text-gray-800">{headerFooterInfo.name}</p>
-              <p>{headerFooterInfo.address1}, {headerFooterInfo.address2}</p>
-              <p>{headerFooterInfo.cityState}</p>
-              <p>P: {headerFooterInfo.phone}</p>
-              <p>E: {headerFooterInfo.email}</p>
+              <p className="font-bold text-xs text-gray-800">{companyInfo.name}</p>
+              <p>{companyInfo.address1}, {companyInfo.address2}</p>
+              <p>{companyInfo.cityState}</p>
+              <p>P: {companyInfo.phone}</p>
+              <p>E: {companyInfo.email}</p>
           </div>
         </header>
         <div className="my-6 border-t border-gray-300"></div>

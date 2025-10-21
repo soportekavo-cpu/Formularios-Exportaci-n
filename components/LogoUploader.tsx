@@ -4,9 +4,10 @@ import { TrashIcon } from './Icons';
 interface LogoUploaderProps {
   logo: string | null;
   setLogo: (logo: string | null) => void;
+  company: 'dizano' | 'proben';
 }
 
-const LogoUploader: React.FC<LogoUploaderProps> = ({ logo, setLogo }) => {
+const LogoUploader: React.FC<LogoUploaderProps> = ({ logo, setLogo, company }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,21 +33,23 @@ const LogoUploader: React.FC<LogoUploaderProps> = ({ logo, setLogo }) => {
         fileInputRef.current.value = "";
     }
   };
+  
+  const isProben = company === 'proben';
 
   return (
-    <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             {logo ? (
-              <img src={logo} alt="Logo de la compañía" className="h-16 w-auto object-contain bg-gray-50 p-1 rounded border" />
+              <img src={logo} alt="Logo de la compañía" className={`object-contain bg-gray-50 p-1 rounded border ${isProben ? 'h-16 w-32' : 'h-16 w-16'}`} />
             ) : (
-              <div className="h-16 w-32 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-500 border">
+              <div className={`bg-gray-100 rounded flex items-center justify-center text-sm text-gray-500 border ${isProben ? 'h-16 w-32' : 'h-16 w-16'}`}>
                 Sin logo
               </div>
             )}
             <div>
-              <h3 className="font-semibold text-gray-800">Logo de la Compañía</h3>
-              <p className="text-xs text-gray-500">Usado en las instrucciones de pago.</p>
+              <h3 className="font-semibold text-gray-800">Logo de {isProben ? 'Proben, S.A.' : 'Dizano, S.A.'}</h3>
+              <p className="text-xs text-gray-500">Usado en los documentos.</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -77,7 +80,9 @@ const LogoUploader: React.FC<LogoUploaderProps> = ({ logo, setLogo }) => {
           </div>
         </div>
         <div className="mt-3 pt-3 border-t text-xs text-gray-600 bg-blue-50 p-2 rounded-md">
-            <span className="font-semibold">Recomendaciones:</span> Para mejor calidad, usa un archivo PNG con fondo transparente y una altura de al menos 200px.
+            <span className="font-semibold">Recomendaciones:</span> {isProben 
+              ? 'Logo rectangular. Para mejor calidad, usa un archivo PNG con fondo transparente.' 
+              : 'Logo cuadrado. Para mejor calidad, usa un archivo PNG con fondo transparente y una altura de al menos 200px.'}
         </div>
     </div>
   );

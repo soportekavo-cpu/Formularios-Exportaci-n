@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Certificate } from '../types';
+import { getCompanyInfo } from '../utils/companyData';
 
 interface CartaPortePDFProps {
   certificate: Certificate;
@@ -7,6 +8,9 @@ interface CartaPortePDFProps {
 }
 
 const CartaPortePDF: React.FC<CartaPortePDFProps> = ({ certificate, logo }) => {
+  
+  const companyInfo = getCompanyInfo(certificate.company);
+  const isProben = certificate.company === 'proben';
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
@@ -20,19 +24,8 @@ const CartaPortePDF: React.FC<CartaPortePDFProps> = ({ certificate, logo }) => {
   
   const totalPackages = (certificate.packages || []).reduce((sum, p) => sum + Number(p.quantity || 0), 0);
   const totalTare = (certificate.packages || []).reduce((sum, p) => sum + ((Number(p.quantity) || 0) * (Number(p.tareUnitWeight) || 0)), 0);
-
-  
-  const headerFooterInfo = {
-    name: 'DIZANO, S.A.',
-    address1: '1ra. Av. A 4-33 Granjas La Joya',
-    address2: 'Zona 8 San Miguel Petapa',
-    cityState: 'Guatemala, Guatemala.',
-    phone: '(502) 2319-8700',
-    email: 'exportaciones@cafelasregiones.gt'
-  };
   
   const noteText = "NOTA: El presente envio no debe ser firmado por personal de la empresa portuaria, sino que ésta emitirá y entregará al piloto de la unidad de transporte un acuse de recibo de exportación en donde se indicará la cantidad de bultos, peso total recibido, faltantes, excedentes y condiciones en que se recibe la mercaderia para conocimiento y registros del remitente.";
-
 
   const InfoBlock: React.FC<{ label: string; children: React.ReactNode; isPre?: boolean }> = ({ label, children, isPre=false }) => (
     <div>
@@ -49,24 +42,26 @@ const CartaPortePDF: React.FC<CartaPortePDFProps> = ({ certificate, logo }) => {
               <tr>
                 <td style={{ width: '30%', verticalAlign: 'middle', textAlign: 'left' }}>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ height: '80px', width: '80px', display: 'inline-block', padding: '4px' }}>
+                    <div style={{ height: '80px', width: isProben ? '160px' : '80px', display: 'inline-block', padding: '4px' }}>
                       {logo ? (
                         <img src={logo} alt="Company Logo" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                       ) : (
-                        <div style={{ height: 'calc(100% - 8px)', width: 'calc(100% - 8px)', border: '4px solid #3B82F6', borderRadius: '12px' }}></div>
+                        <div style={{ height: 'calc(100% - 8px)', width: 'calc(100% - 8px)', border: '4px solid #3B82F6', borderRadius: isProben ? '0' : '12px' }}></div>
                       )}
                     </div>
-                    <h2 style={{ textAlign: 'center', fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.1em', marginTop: '8px', color: '#1f2937', margin: 0 }}>
-                      LAS REGIONES
-                    </h2>
+                    {!isProben && (
+                      <h2 style={{ textAlign: 'center', fontSize: '12px', fontWeight: 'bold', letterSpacing: '0.1em', marginTop: '8px', color: '#1f2937', margin: 0 }}>
+                        LAS REGIONES
+                      </h2>
+                    )}
                   </div>
                 </td>
                 <td style={{ width: '70%', verticalAlign: 'middle', textAlign: 'right', fontSize: '10px', color: '#4b5563' }}>
-                  <p style={{ fontWeight: '700', fontSize: '12px', color: '#1f2937', margin: '0 0 2px 0' }}>{headerFooterInfo.name}</p>
-                  <p style={{ margin: '0 0 2px 0' }}>{headerFooterInfo.address1}, {headerFooterInfo.address2}</p>
-                  <p style={{ margin: '0 0 2px 0' }}>{headerFooterInfo.cityState}</p>
-                  <p style={{ margin: '0 0 2px 0' }}>P: {headerFooterInfo.phone}</p>
-                  <p style={{ margin: '0' }}>E: {headerFooterInfo.email}</p>
+                  <p style={{ fontWeight: '700', fontSize: '12px', color: '#1f2937', margin: '0 0 2px 0' }}>{companyInfo.name}</p>
+                  <p style={{ margin: '0 0 2px 0' }}>{companyInfo.address1}, {companyInfo.address2}</p>
+                  <p style={{ margin: '0 0 2px 0' }}>{companyInfo.cityState}</p>
+                  <p style={{ margin: '0 0 2px 0' }}>P: {companyInfo.phone}</p>
+                  <p style={{ margin: '0' }}>E: {companyInfo.email}</p>
                 </td>
               </tr>
             </tbody>

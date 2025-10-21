@@ -3,6 +3,7 @@ import type { Certificate } from '../types';
 import { ArrowLeftIcon, PrintIcon, DownloadIcon } from './Icons';
 import { printComponent } from '../utils/printUtils';
 import CertificatePDF from './CertificatePDF';
+import { getCompanyInfo } from '../utils/companyData';
 
 interface CertificateViewProps {
   certificate: Certificate | null;
@@ -12,13 +13,15 @@ interface CertificateViewProps {
 
 const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, logo }) => {
 
+  const companyInfo = getCompanyInfo(certificate?.company);
+
   const handlePrint = () => {
     if (certificate) {
       const typeName = certificate.type === 'quality' ? 'Quality' : 'Weight';
       printComponent(
         <CertificatePDF certificate={certificate} logo={logo} />, 
         `${typeName}-Certificate-${certificate.certificateNumber || certificate.id}`,
-        { saveOnly: false }
+        { saveOnly: false, showFooter: true, companyInfo }
       );
     }
   };
@@ -29,7 +32,7 @@ const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, 
       printComponent(
         <CertificatePDF certificate={certificate} logo={logo} />, 
         `${typeName}-Certificate-${certificate.certificateNumber || certificate.id}`,
-        { saveOnly: true }
+        { saveOnly: true, showFooter: true, companyInfo }
       );
     }
   };
@@ -43,6 +46,8 @@ const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, 
     );
   }
   
+  const isProben = certificate.company === 'proben';
+
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString + 'T00:00:00'); // Treat date as local
@@ -52,15 +57,6 @@ const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, 
   // FIX: Added a robust number formatting function to handle potentially non-numeric values.
   const formatNumber = (value: unknown): string => {
     return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value) || 0);
-  };
-
-  const headerFooterInfo = {
-    name: 'DIZANO, S.A.',
-    address1: '1ra. Av. A 4-33 Granjas La Joya',
-    address2: 'Zona 8 San Miguel Petapa',
-    cityState: 'Guatemala, Guatemala.',
-    phone: '(502) 2319-8700',
-    email: 'exportaciones@cafelasregiones.gt'
   };
   
   const subtotals = (certificate.packages || []).reduce((acc, pkg) => {
@@ -136,23 +132,25 @@ const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, 
             <>
               <header className="flex justify-between items-center">
                   <div className="flex flex-col items-center">
-                      <div className="h-20 w-20 flex items-center justify-center p-1">
+                      <div className={`flex items-center justify-center p-1 ${isProben ? 'h-20 w-40' : 'h-20 w-20'}`}>
                           {logo ? (
                               <img src={logo} alt="Company Logo" className="max-h-full max-w-full object-contain" />
                           ) : (
-                              <div className="h-full w-full border-4 border-blue-500 rounded-xl"></div>
+                              <div className={`h-full w-full border-4 border-blue-500 ${isProben ? '' : 'rounded-xl'}`}></div>
                           )}
                       </div>
-                      <h2 className="text-sm font-bold tracking-[0.1em] mt-2" style={{ color: '#1f2937' }}>
-                          LAS REGIONES
-                      </h2>
+                      {!isProben && (
+                        <h2 className="text-sm font-bold tracking-[0.1em] mt-2" style={{ color: '#1f2937' }}>
+                            LAS REGIONES
+                        </h2>
+                      )}
                   </div>
                   <div className="text-right text-[10px] text-gray-600 space-y-0.5">
-                      <p className="font-bold text-xs text-gray-800">{headerFooterInfo.name}</p>
-                      <p>{headerFooterInfo.address1}, {headerFooterInfo.address2}</p>
-                      <p>{headerFooterInfo.cityState}</p>
-                      <p>P: {headerFooterInfo.phone}</p>
-                      <p>E: {headerFooterInfo.email}</p>
+                      <p className="font-bold text-xs text-gray-800">{companyInfo.name}</p>
+                      <p>{companyInfo.address1}, {companyInfo.address2}</p>
+                      <p>{companyInfo.cityState}</p>
+                      <p>P: {companyInfo.phone}</p>
+                      <p>E: {companyInfo.email}</p>
                   </div>
               </header>
               <div className="my-6 border-t border-gray-300"></div>
@@ -161,11 +159,11 @@ const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, 
             <header className="flex justify-between items-start pb-6 border-b border-gray-200">
               <div className="w-24"></div>
               <div className="text-right text-[10px] text-gray-600 space-y-0.5 pt-2">
-                  <p className="font-bold text-xs text-gray-800">{headerFooterInfo.name}</p>
-                  <p>{headerFooterInfo.address1}, {headerFooterInfo.address2}</p>
-                  <p>{headerFooterInfo.cityState}</p>
-                  <p>P: {headerFooterInfo.phone}</p>
-                  <p>E: {headerFooterInfo.email}</p>
+                  <p className="font-bold text-xs text-gray-800">{companyInfo.name}</p>
+                  <p>{companyInfo.address1}, {companyInfo.address2}</p>
+                  <p>{companyInfo.cityState}</p>
+                  <p>P: {companyInfo.phone}</p>
+                  <p>E: {companyInfo.email}</p>
               </div>
             </header>
           )}
@@ -256,6 +254,11 @@ const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, 
                 </footer>
             </div>
           </main>
+          <footer className="mt-16 pt-8 text-center text-[10px] text-gray-600 space-y-0.5">
+              <div className="w-full h-0.5" style={{ backgroundColor: '#f97316' }}></div>
+              <p className="pt-3">{companyInfo.fullAddress}</p>
+              <p>PBX: {companyInfo.phone} - e-mail: {companyInfo.email}</p>
+          </footer>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import type { Certificate, BankAccount } from '../types';
 import { ArrowLeftIcon, PrintIcon, DownloadIcon } from './Icons';
 import { printComponent } from '../utils/printUtils';
 import PaymentInstructionPDF from './PaymentInstructionPDF';
+import { getCompanyInfo } from '../utils/companyData';
 
 interface PaymentInstructionViewProps {
   certificate: Certificate | null;
@@ -42,6 +43,9 @@ const PaymentInstructionView: React.FC<PaymentInstructionViewProps> = ({ certifi
     );
   }
   
+  const companyInfo = getCompanyInfo(certificate.company);
+  const isProben = certificate.company === 'proben';
+
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString + 'T00:00:00');
@@ -86,8 +90,8 @@ const PaymentInstructionView: React.FC<PaymentInstructionViewProps> = ({ certifi
                     <div className="w-32 h-full bg-gray-100 rounded text-xs text-gray-400 flex items-center justify-center">Sin logo</div>
                 )}
               </div>
-              <h2 className="text-xl font-bold tracking-widest">LAS REGIONES</h2>
-              <h1 className="text-3xl font-bold">Dizano, S.A.</h1>
+              {!isProben && <h2 className="text-xl font-bold tracking-widest">LAS REGIONES</h2>}
+              <h1 className="text-3xl font-bold">{companyInfo.name}</h1>
             </div>
         </header>
         

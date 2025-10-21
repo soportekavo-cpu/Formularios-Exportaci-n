@@ -1,28 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import type { BankAccount } from '../types';
+import type { BankAccount, Company } from '../types';
 import { PlusIcon, PencilIcon, TrashIcon } from './Icons';
+import { getCompanyInfo } from '../utils/companyData';
 
 interface BankAccountManagerProps {
   isOpen: boolean;
   onClose: () => void;
   bankAccounts: BankAccount[];
   setBankAccounts: React.Dispatch<React.SetStateAction<BankAccount[]>>;
+  activeCompany: Company;
 }
 
 const inputStyles = "block w-full text-base text-gray-900 bg-gray-50 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 hover:bg-white focus:bg-white transition-colors duration-200 px-4 py-3";
 const textareaStyles = `${inputStyles} min-h-[80px]`;
 
-const emptyAccount: Omit<BankAccount, 'id'> = {
-  bankName: '',
-  swift: '',
-  beneficiary: '',
-  accountNumber: '',
-  iban: '',
-  notes: '',
-};
-
-const BankAccountManager: React.FC<BankAccountManagerProps> = ({ isOpen, onClose, bankAccounts, setBankAccounts }) => {
+const BankAccountManager: React.FC<BankAccountManagerProps> = ({ isOpen, onClose, bankAccounts, setBankAccounts, activeCompany }) => {
   const [editingAccount, setEditingAccount] = useState<Partial<BankAccount> | null>(null);
+
+  const companyInfo = getCompanyInfo(activeCompany);
+  
+  const emptyAccount: Omit<BankAccount, 'id'> = {
+    bankName: '',
+    swift: '',
+    beneficiary: companyInfo.beneficiary,
+    accountNumber: '',
+    iban: '',
+    notes: '',
+  };
 
   useEffect(() => {
     if (!isOpen) {
@@ -84,6 +88,7 @@ const BankAccountManager: React.FC<BankAccountManagerProps> = ({ isOpen, onClose
                             <div>
                                 <p className="font-semibold text-gray-800">{account.bankName}</p>
                                 <p className="text-sm text-gray-500">{account.accountNumber} / IBAN: {account.iban}</p>
+                                <p className="text-sm text-gray-600 font-medium">Beneficiario: {account.beneficiary}</p>
                             </div>
                             <div className="flex items-center gap-x-2 flex-shrink-0">
                                 <button onClick={() => handleEdit(account)} className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md"><PencilIcon /></button>

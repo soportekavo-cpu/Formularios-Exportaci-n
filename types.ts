@@ -38,6 +38,8 @@ export interface PackageItem {
 
 export type CertificateType = 'weight' | 'quality' | 'packing' | 'porte' | 'invoice' | 'payment';
 
+export type Company = 'dizano' | 'proben';
+
 export interface Driver {
   name: string;
   license: string;
@@ -45,6 +47,7 @@ export interface Driver {
 
 export interface Certificate {
   id:string;
+  company: Company;
   type: CertificateType;
   certificateNumber?: string;
   certificateDate: string;

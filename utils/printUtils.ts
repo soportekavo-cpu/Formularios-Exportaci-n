@@ -1,12 +1,13 @@
 import React from 'react';
 import { renderToString } from 'react-dom/server';
+import type { CompanyInfo } from './companyData';
 
 export const printComponent = (
   component: React.ReactElement, 
   title: string, 
-  options: { saveOnly?: boolean, orientation?: 'portrait' | 'landscape', showFooter?: boolean } = {}
+  options: { saveOnly?: boolean, orientation?: 'portrait' | 'landscape', showFooter?: boolean, companyInfo?: CompanyInfo } = {}
 ) => {
-  const { saveOnly = false, orientation = 'portrait', showFooter = true } = options;
+  const { saveOnly = false, orientation = 'portrait', showFooter = true, companyInfo } = options;
   const componentHtml = renderToString(component);
 
   // Abrimos una ventana temporal para ejecutar el script de html2pdf.
@@ -22,6 +23,8 @@ export const printComponent = (
         // Un pequeño retraso para asegurar que Tailwind se inicialice completamente
         setTimeout(() => {
             const element = document.getElementById('element-to-print');
+            const company = ${JSON.stringify(companyInfo)};
+
             const pdfOptions = {
                 margin: ${showFooter ? '[25, 20, 35, 20]' : '[15, 15, 15, 15]'}, // Margen en mm [arriba, izquierda, abajo, derecha] - Aumentado el margen inferior para el pie de página
                 filename: '${title}.pdf',
@@ -32,10 +35,10 @@ export const printComponent = (
             };
             
             const pdfPromise = html2pdf().from(element).set(pdfOptions).toPdf().get('pdf').then(function(pdf) {
-                if (${showFooter}) {
+                if (${showFooter} && company) {
                     const totalPages = pdf.internal.getNumberOfPages();
-                    const addressLine1 = '1 Ave. A 4-33 Granjas La Joya Zona 8, San Miguel Petapa Guatemala, Guatemala.';
-                    const addressLine2 = 'PBX: (502) 2319-8700 - e-mail: exportaciones@cafelasregiones.gt';
+                    const addressLine1 = company.fullAddress;
+                    const addressLine2 = 'PBX: ' + company.phone + ' - e-mail: ' + company.email;
 
                     for (let i = 1; i <= totalPages; i++) {
                         pdf.setPage(i);

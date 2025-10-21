@@ -17,13 +17,11 @@ jobs:
         with:
           node-version: '20'
 
-      - name: 📦 Install deps (ci -> fallback)
+      - name: 📦 Install deps (auto fallback)
         run: |
           if [ -f package-lock.json ]; then
-            echo "Usando npm ci"
             npm ci
           else
-            echo "No hay package-lock.json, usando npm install"
             npm install
           fi
 

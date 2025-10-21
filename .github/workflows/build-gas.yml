@@ -1,0 +1,30 @@
+name: Build and Export for GAS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🟨 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Install deps
+        run: npm ci
+
+      - name: 🏗️ Build (HTML único para GAS)
+        run: npm run build:inline
+
+      - name: 📤 Upload artifact (dist/)
+        uses: actions/upload-artifact@v4
+        with:
+          name: gas-build
+          path: dist/

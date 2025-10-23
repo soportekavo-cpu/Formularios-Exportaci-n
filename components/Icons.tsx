@@ -66,3 +66,22 @@ export const GripVerticalIcon = ({ className = 'w-5 h-5' }: { className?: string
     <path d="M11 5C11 4.44772 10.5523 4 10 4C9.44772 4 9 4.44772 9 5V5.01C9 5.56228 9.44772 6 10 6C10.5523 6 11 5.56228 11 5.01V5ZM11 12C11 11.4477 10.5523 11 10 11C9.44772 11 9 11.4477 9 12V12.01C9 12.5623 9.44772 13 10 13C10.5523 13 11 12.5623 11 12.01V12ZM10 19C10.5523 19 11 18.5523 11 18.01V18C11 17.4477 10.5523 17 10 17C9.44772 17 9 17.4477 9 18V18.01C9 18.5623 9.44772 19 10 19ZM14 5C14 4.44772 14.4477 4 15 4C15.5523 4 16 4.44772 16 5V5.01C16 5.56228 15.5523 6 15 6C14.4477 6 14 5.56228 14 5.01V5ZM14 12C14 11.4477 14.4477 11 15 11C15.5523 11 16 11.4477 16 12V12.01C16 12.5623 15.5523 13 15 13C14.4477 13 14 12.5623 14 12.01V12ZM15 19C15.5523 19 16 18.5623 16 18.01V18C16 17.4477 15.5523 17 15 17C14.4477 17 14 17.4477 14 18V18.01C14 18.5623 14.4477 19 15 19Z"></path>
   </svg>
 );
+
+export const SparklesIcon = ({ className = 'w-5 h-5' }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
+    </svg>
+);
+
+export const DocumentMagnifyingGlassIcon = ({ className = 'w-12 h-12' }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5 4.5 1.5-1.5m3-15a2.25 2.25 0 0 0-2.25-2.25H8.25A2.25 2.25 0 0 0 6 4.5v13.5A2.25 2.25 0 0 0 8.25 21h8.25a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25H15M9 15.75h3" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+    </svg>
+);
+
+export const ChevronDownIcon = ({ className = 'w-5 h-5' }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>
+    <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+  </svg>
+);

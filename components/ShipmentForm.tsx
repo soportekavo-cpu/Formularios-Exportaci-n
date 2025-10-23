@@ -6,6 +6,7 @@ import { companyData } from '../utils/companyData';
 interface ShipmentFormProps {
   onSubmit: (data: Omit<Certificate, 'id' | 'type' | 'certificateNumber'>, types: CertificateType[]) => void;
   onCancel: () => void;
+  initialShipmentData?: Partial<Certificate> | null;
 }
 
 const inputStyles = "block w-full text-base text-gray-900 bg-gray-50 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 hover:bg-white focus:bg-white transition-colors duration-200 px-4 py-3";
@@ -18,18 +19,17 @@ const docTypes: { key: CertificateType; label: string; description: string }[] =
     { key: 'packing', label: 'Lista de Empaque', description: 'Crea una lista de empaque detallada.' },
 ];
 
-const ShipmentForm: React.FC<ShipmentFormProps> = ({ onSubmit, onCancel }) => {
-  const [step, setStep] = useState<'selection' | 'form'>('selection');
+const ShipmentForm: React.FC<ShipmentFormProps> = ({ onSubmit, onCancel, initialShipmentData }) => {
   const [selectedDocs, setSelectedDocs] = useState<Record<string, boolean>>({
     weight: true,
-    quality: false,
-    packing: false,
+    quality: true,
+    packing: true,
   });
   const [formData, setFormData] = useState<Partial<Certificate>>({});
 
   useEffect(() => {
     const defaultPackage: PackageItem = { id: new Date().toISOString(), type: 'BAGS', quantity: '', unitWeight: '', grossUnitWeight: '', marks: '', quality: '' };
-    setFormData({
+    const defaultData = {
       product: 'GREEN COFFEE, CROP 2024/2025',
       shipper: companyData.dizano.shipperText,
       consignee: `Jacobs Douwe Egberts C&T Utrecht\nVleutensevaart 35 Utrecht\n3532 AD, The Netherlands`,
@@ -37,8 +37,11 @@ const ShipmentForm: React.FC<ShipmentFormProps> = ({ onSubmit, onCancel }) => {
       exporterName: 'Yony Roquel',
       packages: [defaultPackage],
       certificateDate: new Date().toISOString().split('T')[0],
-    });
-  }, []);
+    };
+
+    setFormData({ ...defaultData, ...initialShipmentData });
+
+  }, [initialShipmentData]);
 
   useEffect(() => {
     const totalNet = formData.packages?.reduce((sum, pkg) => sum + ((Number(pkg.quantity) || 0) * (Number(pkg.unitWeight) || 0)), 0) || 0;
@@ -90,7 +93,10 @@ const ShipmentForm: React.FC<ShipmentFormProps> = ({ onSubmit, onCancel }) => {
       .filter(([, isSelected]) => isSelected)
       .map(([type]) => type as CertificateType);
     
-    if (typesToCreate.length === 0) return;
+    if (typesToCreate.length === 0) {
+        alert("Por favor, selecciona al menos un documento para generar.");
+        return;
+    };
 
     const { id, type, certificateNumber, ...submissionData } = formData as Certificate;
     onSubmit(submissionData, typesToCreate);
@@ -100,72 +106,50 @@ const ShipmentForm: React.FC<ShipmentFormProps> = ({ onSubmit, onCancel }) => {
   const isPacking = selectedDocs.packing;
   const isWeight = selectedDocs.weight;
 
-  if (step === 'selection') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-2xl">
-           <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200">
-             <div className="text-center mb-10">
-                <h1 className="text-3xl font-bold text-gray-900">Crear Nuevo Embarque</h1>
-                <p className="mt-3 text-base text-gray-600">Selecciona los documentos que deseas generar. Llenarás la información una sola vez.</p>
-             </div>
-             <fieldset className="space-y-5">
-               <legend className="sr-only">Tipos de Documento</legend>
-               {docTypes.map(doc => (
-                 <div key={doc.key} className="relative flex items-start">
-                   <div className="flex h-6 items-center">
-                     <input
-                       id={doc.key}
-                       aria-describedby={`${doc.key}-description`}
-                       name="docs"
-                       type="checkbox"
-                       checked={selectedDocs[doc.key]}
-                       onChange={() => handleDocSelectionChange(doc.key)}
-                       className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-                     />
-                   </div>
-                   <div className="ml-3 text-sm leading-6">
-                     <label htmlFor={doc.key} className="font-medium text-gray-900">{doc.label}</label>
-                     <p id={`${doc.key}-description`} className="text-gray-500">{doc.description}</p>
-                   </div>
-                 </div>
-               ))}
-             </fieldset>
-             <div className="mt-12 flex justify-end gap-4">
-                <button type="button" onClick={onCancel} className="rounded-md bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
-                  Cancelar
-                </button>
-                <button 
-                    type="button" 
-                    onClick={() => setStep('form')} 
-                    disabled={!Object.values(selectedDocs).some(v => v)}
-                    className="inline-flex justify-center rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed"
-                >
-                  Siguiente
-                </button>
-             </div>
-           </div>
-        </div>
-      </div>
-    );
-  }
-
   const formatNumber = (num: number, digits = 2) => new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(num);
   const totalPackages = formData.packages?.reduce((sum, pkg) => sum + (Number(pkg.quantity) || 0), 0) || 0;
   
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-8">
-        <button onClick={() => setStep('selection')} className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+        <button onClick={onCancel} className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900">
           <ArrowLeftIcon className="w-5 h-5" />
-          Volver a la selección
+          Volver a la lista
         </button>
       </div>
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Nuevo Embarque</h1>
-        <p className="text-base text-gray-600 mb-10">Generando: {docTypes.filter(d => selectedDocs[d.key]).map(d => d.label).join(', ')}.</p>
+        <p className="text-base text-gray-600 mb-10">
+          {initialShipmentData ? 'Datos extraídos con IA. Revisa y completa la información.' : 'Completa la información para generar los documentos del embarque.'}
+        </p>
         
         <form onSubmit={handleSubmit} className="space-y-10">
+            {/* Document Selection */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">Documentos a Generar</h2>
+                <fieldset className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <legend className="sr-only">Tipos de Documento</legend>
+                    {docTypes.map(doc => (
+                        <div key={doc.key} className="relative flex items-start">
+                        <div className="flex h-6 items-center">
+                            <input
+                            id={doc.key}
+                            name="docs"
+                            type="checkbox"
+                            checked={selectedDocs[doc.key]}
+                            onChange={() => handleDocSelectionChange(doc.key)}
+                            className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                            />
+                        </div>
+                        <div className="ml-3 text-sm leading-6">
+                            <label htmlFor={doc.key} className="font-medium text-gray-900">{doc.label}</label>
+                        </div>
+                        </div>
+                    ))}
+                </fieldset>
+            </div>
+
+
             {/* Parties Info */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                 <h2 className="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">Información de las Partes</h2>

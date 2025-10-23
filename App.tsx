@@ -12,7 +12,7 @@ import CartaPorteView from './components/CartaPorteView';
 import InvoiceView from './components/InvoiceView';
 import PaymentInstructionView from './components/PaymentInstructionView';
 import LogoUploader from './components/LogoUploader';
-import { ExclamationTriangleIcon } from './components/Icons';
+import { ExclamationTriangleIcon, SparklesIcon } from './components/Icons';
 import { printComponent } from './utils/printUtils';
 import CertificatePDF from './components/CertificatePDF';
 import PackingListPDF from './components/PackingListPDF';
@@ -20,6 +20,7 @@ import CartaPortePDF from './components/CartaPortePDF';
 import InvoicePDF from './components/InvoicePDF';
 import PaymentInstructionPDF from './components/PaymentInstructionPDF';
 import { companyData, getCompanyInfo } from './utils/companyData';
+import DataExtractorModal from './components/DataExtractorModal';
 
 type View = 'list' | 'form' | 'view' | 'new_shipment';
 
@@ -52,6 +53,47 @@ const DeleteConfirmationModal = ({ onConfirm, onCancel }: { onConfirm: () => voi
     </div>
 );
 
+const ShipmentCreationChoiceModal = ({ onSelectAi, onSelectManual, onCancel }: { onSelectAi: () => void, onSelectManual: () => void, onCancel: () => void }) => (
+    <div className="relative z-40" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+        <div className="fixed inset-0 z-40 w-screen overflow-y-auto">
+            <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md">
+                    <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                        <div className="text-center">
+                            <h3 className="text-xl font-semibold leading-6 text-gray-900" id="modal-title">Crear Nuevo Embarque</h3>
+                            <p className="mt-2 text-sm text-gray-500">¿Cómo quieres empezar? Puedes llenar los datos automáticamente desde un documento o hacerlo manualmente.</p>
+                        </div>
+                        <div className="mt-6 grid grid-cols-1 gap-4">
+                             <button type="button" onClick={onSelectAi} className="w-full text-left p-4 rounded-lg border hover:bg-indigo-50 hover:border-indigo-300 transition-all">
+                                <div className="flex items-center gap-4">
+                                    <SparklesIcon className="w-8 h-8 text-indigo-500" />
+                                    <div>
+                                        <p className="font-semibold text-gray-900">Crear desde Documento con IA</p>
+                                        <p className="text-sm text-gray-500">Sube un Bill of Lading para extraer los datos.</p>
+                                    </div>
+                                </div>
+                            </button>
+                            <button type="button" onClick={onSelectManual} className="w-full text-left p-4 rounded-lg border hover:bg-gray-50 hover:border-gray-300 transition-all">
+                                <div className="flex items-center gap-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-gray-400"><path d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a.375.375 0 0 1-.375-.375V6.75A3.75 3.75 0 0 0 10.5 3H5.625Zm1.5 1.5a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3Zm0 3a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3Zm0 3a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3Z" /></svg>
+                                    <div>
+                                        <p className="font-semibold text-gray-900">Crear Manualmente (Juego Completo)</p>
+                                        <p className="text-sm text-gray-500">Llena el formulario desde cero.</p>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                    <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                        <button type="button" onClick={onCancel} className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
 
 const App: React.FC = () => {
   const [storedCertificates, setCertificates] = useLocalStorage<Certificate[]>('certificates', []);
@@ -74,6 +116,10 @@ const App: React.FC = () => {
   const [selectedCertificateId, setSelectedCertificateId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [duplicateSourceId, setDuplicateSourceId] = useState<string | null>(null);
+  
+  const [isExtractorOpen, setIsExtractorOpen] = useState(false);
+  const [isShipmentChoiceOpen, setIsShipmentChoiceOpen] = useState(false);
+  const [extractedDataForShipment, setExtractedDataForShipment] = useState<Partial<Certificate> | null>(null);
 
   useEffect(() => {
     // Migrate old data structure on first load
@@ -94,20 +140,33 @@ const App: React.FC = () => {
 
   const certificates = Array.isArray(storedCertificates) ? storedCertificates : [];
 
-  const handleAdd = () => {
+  const handleManualSingleAdd = () => {
     setSelectedCertificateId(null);
     setDuplicateSourceId(null);
-    if (activeCertType === 'porte' || activeCertType === 'invoice') {
-      setCurrentView('form');
-    } else {
-      setCurrentView('new_shipment');
-    }
-  };
+    setCurrentView('form');
+  }
+
+  const handleUnifiedAdd = () => {
+    setSelectedCertificateId(null);
+    setDuplicateSourceId(null);
+    setIsShipmentChoiceOpen(true);
+  }
+
+  const handleAddForNonShipment = () => {
+     setSelectedCertificateId(null);
+     setDuplicateSourceId(null);
+     setCurrentView('form');
+  }
 
   const handleEdit = (id: string) => {
     setSelectedCertificateId(id);
     setDuplicateSourceId(null);
-    setCurrentView('form');
+    const cert = certificates.find(c => c.id === id);
+    if (cert?.type === 'weight' || cert?.type === 'quality' || cert?.type === 'packing') {
+      setCurrentView('form');
+    } else {
+       setCurrentView('form');
+    }
   };
   
   const handleView = (id: string) => {
@@ -146,7 +205,26 @@ const App: React.FC = () => {
   const handleCancel = () => {
     setSelectedCertificateId(null);
     setDuplicateSourceId(null);
+    setExtractedDataForShipment(null); // Clear extracted data on any cancel
+    setIsShipmentChoiceOpen(false);
     setCurrentView('list');
+  };
+
+  const handleOpenExtractor = () => {
+    setIsShipmentChoiceOpen(false);
+    setIsExtractorOpen(true);
+  };
+  
+  const handleOpenManualShipmentForm = () => {
+    setIsShipmentChoiceOpen(false);
+    setExtractedDataForShipment(null);
+    setCurrentView('new_shipment');
+  };
+
+  const handleExtractionComplete = (data: Partial<Certificate>) => {
+    setExtractedDataForShipment(data);
+    setIsExtractorOpen(false);
+    setCurrentView('new_shipment');
   };
 
   const handleSubmitForm = (data: Certificate) => {
@@ -337,6 +415,7 @@ const App: React.FC = () => {
       });
       
       setCurrentView('list');
+      setExtractedDataForShipment(null); // Clear data after creation
   };
 
   const initialFormData = useMemo((): Partial<Certificate> => {
@@ -504,7 +583,7 @@ const App: React.FC = () => {
 
     switch (currentView) {
         case 'new_shipment':
-            return <ShipmentForm onSubmit={handleCreateShipment} onCancel={handleCancel} />;
+            return <ShipmentForm onSubmit={handleCreateShipment} onCancel={handleCancel} initialShipmentData={extractedDataForShipment} />;
         case 'form':
             if (activeCertType === 'invoice') {
                 return <InvoiceForm initialData={initialFormData} onSubmit={handleSubmitForm} onCancel={handleCancel} />;
@@ -588,7 +667,8 @@ const App: React.FC = () => {
                     <CertificateList
                       certificates={certificates.filter(c => (c.company || 'dizano') === activeCompany && c.type === activeCertType)}
                       activeCertType={activeCertType}
-                      onAdd={handleAdd}
+                      onAdd={activeCertType === 'weight' || activeCertType === 'quality' || activeCertType === 'packing' ? handleManualSingleAdd : handleAddForNonShipment}
+                      onUnifiedAdd={handleUnifiedAdd}
                       onEdit={handleEdit}
                       onView={handleView}
                       onDelete={handleDeleteRequest}
@@ -603,6 +683,12 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {deleteConfirmId && <DeleteConfirmationModal onConfirm={confirmDelete} onCancel={cancelDelete} />}
+      {isShipmentChoiceOpen && <ShipmentCreationChoiceModal onSelectAi={handleOpenExtractor} onSelectManual={handleOpenManualShipmentForm} onCancel={handleCancel} />}
+      <DataExtractorModal 
+        isOpen={isExtractorOpen}
+        onClose={() => setIsExtractorOpen(false)}
+        onExtractionComplete={handleExtractionComplete}
+      />
       {renderCurrentView()}
     </div>
   );

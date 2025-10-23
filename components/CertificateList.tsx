@@ -1,24 +1,40 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Certificate, CertificateType } from '../types';
-import { PlusIcon, PencilIcon, TrashIcon, EyeIcon, DocumentDuplicateIcon, CurrencyDollarIcon } from './Icons';
+import { PlusIcon, PencilIcon, TrashIcon, EyeIcon, DocumentDuplicateIcon, CurrencyDollarIcon, ChevronDownIcon } from './Icons';
 
 interface CertificateListProps {
   certificates: Certificate[];
   activeCertType: CertificateType;
   onAdd: () => void;
-  onEdit: (id: string) => void;
+  onUnifiedAdd: () => void;
   onView: (id: string) => void;
+  onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   onCreatePaymentInstruction: (id: string) => void;
 }
 
-const CertificateList: React.FC<CertificateListProps> = ({ certificates, activeCertType, onAdd, onEdit, onView, onDelete, onDuplicate, onCreatePaymentInstruction }) => {
+const CertificateList: React.FC<CertificateListProps> = ({ 
+    certificates, activeCertType, onAdd, onUnifiedAdd, onEdit, onView, onDelete, onDuplicate, onCreatePaymentInstruction 
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' }>({
     key: 'certificateDate',
     direction: 'descending',
   });
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const requestSort = (key: string) => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -110,26 +126,29 @@ const CertificateList: React.FC<CertificateListProps> = ({ certificates, activeC
   const isInvoice = activeCertType === 'invoice';
   const isPayment = activeCertType === 'payment';
   
+  const isShipmentDoc = isWeight || isQuality || isPacking;
+  
   let title = '';
   let description = '';
   let searchPlaceholder = 'Buscar...';
   let addButtonText = '';
+  let manualAddText = '';
 
   if (isWeight) {
     title = 'Certificados de Peso';
     description = 'Una lista de todos los certificados de peso guardados.';
     searchPlaceholder = 'Buscar por consignatario, contenedor...';
-    addButtonText = 'Crear Nuevo Embarque';
+    manualAddText = 'Crear solo Cert. de Peso (Manual)';
   } else if (isQuality) {
     title = 'Certificados de Calidad';
     description = 'Una lista de todos los certificados de calidad guardados.';
     searchPlaceholder = 'Buscar por consignatario, contenedor, calidad...';
-    addButtonText = 'Crear Nuevo Embarque';
+    manualAddText = 'Crear solo Cert. de Calidad (Manual)';
   } else if (isPacking) {
     title = 'Listas de Empaque';
     description = 'Una lista de todas las listas de empaque guardadas.';
     searchPlaceholder = 'Buscar por consignatario, contenedor...';
-    addButtonText = 'Crear Nuevo Embarque';
+    manualAddText = 'Crear solo Lista de Empaque (Manual)';
   } else if (isPorte) {
     title = 'Cartas de Porte';
     description = 'Una lista de todas las cartas de porte guardadas.';
@@ -156,14 +175,47 @@ const CertificateList: React.FC<CertificateListProps> = ({ certificates, activeC
         </div>
         <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
           {activeCertType !== 'payment' && (
-            <button
-              type="button"
-              onClick={onAdd}
-              className="inline-flex items-center gap-x-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-            >
-              <PlusIcon className="w-5 h-5" />
-              {addButtonText}
-            </button>
+            isShipmentDoc ? (
+              <div className="relative inline-flex rounded-md shadow-sm" ref={menuRef}>
+                <button
+                  type="button"
+                  onClick={onUnifiedAdd}
+                  className="inline-flex items-center gap-x-2 rounded-l-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                >
+                  <PlusIcon className="w-5 h-5" />
+                  Crear Nuevo Embarque
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="relative -ml-px inline-flex items-center rounded-r-md bg-indigo-600 p-2 text-white hover:bg-indigo-500 focus:z-10"
+                >
+                  <span className="sr-only">Abrir opciones</span>
+                  <ChevronDownIcon className="h-5 w-5" />
+                </button>
+                {isMenuOpen && (
+                  <div className="absolute right-0 z-10 mt-12 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                    <div className="py-1">
+                      <button
+                        onClick={() => { onAdd(); setIsMenuOpen(false); }}
+                        className="w-full text-left text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100"
+                      >
+                        {manualAddText}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+               <button
+                type="button"
+                onClick={onAdd}
+                className="inline-flex items-center gap-x-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              >
+                <PlusIcon className="w-5 h-5" />
+                {addButtonText}
+              </button>
+            )
           )}
         </div>
       </div>
@@ -293,14 +345,11 @@ const CertificateList: React.FC<CertificateListProps> = ({ certificates, activeC
                     <p className="mt-1 text-sm text-gray-500">{searchTerm ? 'Intenta con otros términos de búsqueda.' : isPorte ? 'Crea tu primera carta de porte para empezar.' : isInvoice ? 'Crea tu primer invoice para empezar.' : isPayment ? 'Crea instrucciones de pago desde un invoice existente.' : 'Crea tu primer embarque para empezar.'}</p>
                     {!searchTerm && activeCertType !== 'payment' && (
                         <div className="mt-6">
-                            <button
-                              type="button"
-                              onClick={onAdd}
-                              className="inline-flex items-center gap-x-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-                            >
-                              <PlusIcon className="w-5 h-5" />
-                              {addButtonText}
-                            </button>
+                            {isShipmentDoc ? (
+                                <button type="button" onClick={onUnifiedAdd} className="inline-flex items-center gap-x-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"><PlusIcon className="w-5 h-5" />Crear Nuevo Embarque</button>
+                            ) : (
+                                <button type="button" onClick={onAdd} className="inline-flex items-center gap-x-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"><PlusIcon className="w-5 h-5" />{addButtonText}</button>
+                            )}
                         </div>
                     )}
                 </div>

@@ -1,6 +1,8 @@
 
 
 
+
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Certificate, CertificateType, PackageItem, BankAccount, Company, User, Role, Container, Shipment, ShipmentTask, AnacafeSubtask, TaskPriority, TaskCategory, Partida, Contract, Buyer, Consignee, Notifier, LicensePayment, Resource, PermissionAction } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -197,7 +199,7 @@ export default function App() {
       // --- SUPER ADMIN SHORTCUT ---
       // If role name is 'Admin' or has isDefault: true, allow everything.
       // This avoids needing complex permission arrays in Firestore.
-      if (userRole.name === 'Admin' || userRole.id === 'admin' || userRole.isDefault) {
+      if (userRole.isDefault || userRole.name === 'Admin' || userRole.id === 'admin') {
           return true;
       }
 

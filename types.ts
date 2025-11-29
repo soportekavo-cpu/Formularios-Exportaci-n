@@ -148,7 +148,7 @@ export interface Role {
     id: string;
     name: string;
     description?: string;
-    isDefault?: boolean; // Added for simplified Admin check
+    isDefault?: boolean; // Permite acceso total sin definir permisos manuales (Super Admin)
     permissions: Permission[];
 }
 

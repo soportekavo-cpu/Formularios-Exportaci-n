@@ -1,11 +1,25 @@
 
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, setDoc, orderBy } from 'firebase/firestore';
-import { db } from '../services/firebaseConfig';
+import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { db, auth } from '../services/firebaseConfig';
+import { onAuthStateChanged } from "firebase/auth";
 
 export function useFirestore<T>(collectionName: string) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    // Monitor auth state to enable/disable listeners
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+        setIsAuthenticated(!!user);
+        if (!user) {
+            setData([]); // Clear data on logout
+            setLoading(false);
+        }
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (!db) {
@@ -14,7 +28,14 @@ export function useFirestore<T>(collectionName: string) {
         return;
     }
 
-    // Intentamos ordenar por 'id' o fecha si es posible, por defecto sin orden para evitar errores de índices
+    // Stop if not authenticated to avoid "Insufficient Permissions" errors
+    if (!isAuthenticated) {
+        return;
+    }
+
+    setLoading(true);
+
+    // Default query without ordering to prevent index requirements errors initially
     const q = query(collection(db, collectionName));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -30,14 +51,11 @@ export function useFirestore<T>(collectionName: string) {
     });
 
     return () => unsubscribe();
-  }, [collectionName]);
+  }, [collectionName, isAuthenticated]);
 
   const add = async (item: any) => {
       try {
         const { id, ...rest } = item;
-        // Si el item ya tiene un ID (ej: generado por frontend con fechas/uuid), usamos setDoc para preservarlo.
-        // Si no, usamos addDoc para que Firestore genere uno.
-        // En esta app, muchos IDs se generan como ISOStrings, así que preferimos setDoc si existe.
         if (id) {
             await setDoc(doc(db, collectionName, id), rest);
         } else {
@@ -52,7 +70,6 @@ export function useFirestore<T>(collectionName: string) {
   const update = async (id: string, item: any) => {
       try {
         const docRef = doc(db, collectionName, id);
-        // Eliminamos id del objeto update para evitar redundancia o errores
         const { id: _, ...dataToUpdate } = item;
         await updateDoc(docRef, dataToUpdate);
       } catch (e) {

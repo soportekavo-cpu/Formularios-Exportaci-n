@@ -114,10 +114,10 @@ const RoleManager: React.FC<RoleManagerProps> = ({ roles, onSave, onDelete }) =>
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-1">
-                            {role.permissions.slice(0, 5).map((p, idx) => (
+                            {(role.permissions || []).slice(0, 5).map((p, idx) => (
                                 <span key={idx} className="text-[10px] bg-muted px-1.5 py-0.5 rounded border uppercase">{p.resource.replace('documents_', '')}</span>
                             ))}
-                            {role.permissions.length > 5 && <span className="text-[10px] text-muted-foreground px-1">+{role.permissions.length - 5} más</span>}
+                            {(role.permissions || []).length > 5 && <span className="text-[10px] text-muted-foreground px-1">+{(role.permissions || []).length - 5} más</span>}
                         </div>
                     </div>
                 ))}

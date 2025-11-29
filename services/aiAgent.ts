@@ -2,25 +2,27 @@ import { GoogleGenAI, Type, FunctionDeclaration, Chat } from "@google/genai";
 import { dbService } from "./db";
 import type { Contract, Certificate } from "../types";
 
-// Acceso seguro a la API Key (Soporte para Build Time y Runtime Injection)
+// Acceso seguro a la API Key
 const getApiKey = () => {
   // 1. Runtime Injection (Producción con App Hosting / Docker vía server.js)
   // @ts-ignore
   if (typeof window !== 'undefined' && window.env && window.env.VITE_GEMINI_API_KEY) {
-    console.log("[AI Agent] Usando clave inyectada por el servidor (Runtime)");
-    // @ts-ignore
     return window.env.VITE_GEMINI_API_KEY;
   }
 
   // 2. Vite Build Time (Desarrollo Local)
   // @ts-ignore
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
-    console.log("[AI Agent] Usando clave de entorno local (Vite)");
-    // @ts-ignore
     return import.meta.env.VITE_GEMINI_API_KEY;
   }
   
-  // 3. Process Env (Node/SSR fallback)
+  // 3. Local Storage (Respaldo Manual para Admins)
+  if (typeof window !== 'undefined') {
+      const localKey = window.localStorage.getItem('gemini_api_key');
+      if (localKey) return localKey;
+  }
+  
+  // 4. Process Env (Node/SSR fallback)
   // @ts-ignore
   if (typeof process !== 'undefined' && process.env) {
     // @ts-ignore
@@ -29,14 +31,12 @@ const getApiKey = () => {
   return undefined;
 };
 
-const API_KEY = getApiKey();
+// Reiniciar instancia de AI si la key cambia
+export const resetAiInstance = () => {
+    ai = null;
+};
 
 let ai: GoogleGenAI | null = null;
-if (API_KEY) {
-    ai = new GoogleGenAI({ apiKey: API_KEY });
-} else {
-    console.warn("⚠️ [AI Agent] API Key NO detectada. La IA no funcionará.");
-}
 
 // --- TOOL DEFINITIONS ---
 
@@ -85,13 +85,19 @@ export class LogisticsAgent {
 
     async startChat() {
         const key = getApiKey();
+        
         if (!key) {
-            return "⚠️ Error de Configuración: No se detecta la API Key de Gemini.\n\nSi estás en producción, asegúrate de que el secreto VITE_GEMINI_API_KEY esté habilitado en App Hosting y que la cuenta de servicio tenga permiso 'Secret Manager Secret Accessor'.";
+            // Retornamos null para indicar que falta la key
+            return null; 
         }
         
-        // Re-init AI if key was late-bound (e.g. hydration)
         if (!ai) {
-             ai = new GoogleGenAI({ apiKey: key });
+             try {
+                ai = new GoogleGenAI({ apiKey: key });
+             } catch (e) {
+                 console.error("Error initializing Gemini:", e);
+                 return null;
+             }
         }
 
         this.chatSession = ai.chats.create({
@@ -128,15 +134,17 @@ export class LogisticsAgent {
                 }]
             }
         });
-        return "Sistema de Trazabilidad Total: CONECTADO. Tengo acceso a Contratos, Partidas, Logística, Empaques y Documentos. ¿Qué necesitas saber?";
+        return "READY";
     }
 
     async sendMessage(message: string): Promise<string> {
-        if (!this.chatSession) await this.startChat();
+        const initStatus = await this.startChat();
         
-        if (!this.chatSession) {
-             return "⚠️ Error: No pude iniciar la sesión de chat. Verifica la configuración de la API Key.";
+        if (initStatus === null) {
+             throw new Error("MISSING_API_KEY");
         }
+        
+        if (!this.chatSession) return "Error iniciando sesión de chat.";
 
         try {
             let result = await this.chatSession.sendMessage({ message });

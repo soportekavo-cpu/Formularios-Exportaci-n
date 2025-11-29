@@ -17,7 +17,6 @@ import LoginScreen from './components/LoginScreen';
 import { companyData } from './utils/companyData';
 import type { CompanyInfo } from './utils/companyData';
 import CompanyInfoManager from './components/CompanyInfoManager';
-import DataExtractorModal from './components/DataExtractorModal';
 import ShipmentDashboard from './components/ShipmentDashboard';
 import ContractModal from './components/ContractModal';
 import AddShipmentModal from './components/ShipmentModal';
@@ -31,7 +30,8 @@ import { mapPartidaToCertificate } from './utils/documentMappers';
 import DashboardLayout from './components/DashboardLayout';
 import HomeDashboard from './components/HomeDashboard';
 import RoleManager from './components/RoleManager';
-import { ExclamationTriangleIcon, SparklesIcon } from './components/Icons';
+import { ExclamationTriangleIcon } from './components/Icons';
+import { seedDatabase } from './services/seeder';
 
 type View = 'list' | 'form' | 'view' | 'new_shipment';
 type Page = 'dashboard' | 'shipments' | 'documents' | 'admin' | 'liquidaciones';
@@ -128,49 +128,6 @@ const DeleteConfirmationModal = ({ onConfirm, onCancel, title = "Eliminar Docume
     </div>
 );
 
-const ShipmentCreationChoiceModal = ({ onSelectAi, onSelectManual, onCancel }: { onSelectAi: () => void, onSelectManual: () => void, onCancel: () => void }) => (
-    <div className="relative z-40" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity"></div>
-        <div className="fixed inset-0 z-40 w-screen overflow-y-auto">
-            <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                <div className="relative transform overflow-hidden rounded-lg bg-card text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md border">
-                    <div className="bg-card px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-                        <div className="text-center">
-                            <h3 className="text-xl font-semibold leading-6 text-foreground" id="modal-title">Crear Nuevo Embarque</h3>
-                            <p className="mt-2 text-sm text-muted-foreground">¿Cómo quieres empezar? Puedes llenar los datos automáticamente desde un documento o hacerlo manualmente.</p>
-                        </div>
-                        <div className="mt-6 grid grid-cols-1 gap-4">
-                             <button type="button" onClick={onSelectAi} className="w-full text-left p-4 rounded-lg border bg-card hover:bg-accent transition-all">
-                                <div className="flex items-center gap-4">
-                                    <SparklesIcon className="w-8 h-8 text-primary" />
-                                    <div>
-                                        <p className="font-semibold text-foreground">Crear desde Documento con IA</p>
-                                        <p className="text-sm text-muted-foreground">Sube un Bill of Lading para extraer los datos.</p>
-                                    </div>
-                                </div>
-                            </button>
-                            <button type="button" onClick={onSelectManual} className="w-full text-left p-4 rounded-lg border bg-card hover:bg-accent transition-all">
-                                <div className="flex items-center gap-4">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-muted-foreground">
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                                    </svg>
-                                    <div>
-                                        <p className="font-semibold text-foreground">Ingreso Manual</p>
-                                        <p className="text-sm text-muted-foreground">Completa todos los campos del formulario.</p>
-                                    </div>
-                                </div>
-                            </button>
-                        </div>
-                    </div>
-                    <div className="bg-muted px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                        <button type="button" onClick={onCancel} className="mt-3 inline-flex w-full justify-center rounded-md bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-sm ring-1 ring-inset ring-border hover:bg-accent sm:mt-0 sm:w-auto">Cancelar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-);
-
 interface AlertItem {
   id: string;
   contractId: string;
@@ -207,8 +164,6 @@ export default function App() {
   const [contractToDelete, setContractToDelete] = useState<string | null>(null);
   const [partidaToDelete, setPartidaToDelete] = useState<{contractId: string, partidaId: string} | null>(null);
   const [theme, setTheme] = useLocalStorage<Theme>('theme', 'system');
-  const [isShipmentChoiceModalOpen, setIsShipmentChoiceModalOpen] = useState(false);
-  const [isDataExtractorModalOpen, setIsDataExtractorModalOpen] = useState(false);
   const [initialShipmentData, setInitialShipmentData] = useState<Partial<Certificate> | null>(null);
   const [prefilledDocumentData, setPrefilledDocumentData] = useState<Partial<Certificate> | null>(null);
 
@@ -230,6 +185,11 @@ export default function App() {
     partida: Partial<Partida> | null;
     isReadOnly: boolean;
   }>({ isOpen: false, contractId: null, partida: null, isReadOnly: false });
+
+  // Ejecutar seeder al cargar
+  useEffect(() => {
+      seedDatabase();
+  }, []);
 
   // Helper for checking permissions
   const hasPermission = (resource: Resource, action: PermissionAction) => {
@@ -371,7 +331,8 @@ export default function App() {
 
   const handleUnifiedAdd = () => {
       setInitialShipmentData(null);
-      setIsShipmentChoiceModalOpen(true);
+      // Ahora va directo al formulario, eliminada la opción de IA
+      setView('new_shipment');
   };
 
   const handleAdd = () => {
@@ -506,26 +467,6 @@ export default function App() {
       setView('list');
       setCurrentId(null);
       setInitialShipmentData(null);
-  };
-  
-  const handleExtractionComplete = (data: Partial<Certificate>) => {
-      const shipmentData: Partial<Certificate> = {
-          consignee: data.consignee || '',
-          notify: data.notify || data.consignee || '',
-          billOfLadingNo: data.billOfLadingNo || '',
-          shippingLine: data.shippingLine || '',
-          destination: data.destination || '',
-          product: data.product || 'GREEN COFFEE, CROP 2024/2025',
-          containers: (data as any).containerNo ? [{
-              id: new Date().toISOString(),
-              containerNo: (data as any).containerNo,
-              sealNo: (data as any).sealNo || '',
-              packages: ((data as any).packages && (data as any).packages.length > 0 ? (data as any).packages : [{ id: new Date().toISOString(), type: 'BAGS', quantity: '', unitWeight: '', grossUnitWeight: '', marks: '' }]) as PackageItem[]
-          }] : (data.containers || []),
-      };
-      setInitialShipmentData(shipmentData);
-      setIsDataExtractorModalOpen(false);
-      setView('new_shipment');
   };
 
   const handleOpenContractModal = (contract: Partial<Contract> | null = null) => {
@@ -831,17 +772,6 @@ export default function App() {
           shipments={shipments || []}
         />
       )}
-
-      {isShipmentChoiceModalOpen && <ShipmentCreationChoiceModal 
-          onSelectAi={() => { setIsShipmentChoiceModalOpen(false); setIsDataExtractorModalOpen(true); }}
-          onSelectManual={() => { setIsShipmentChoiceModalOpen(false); setView('new_shipment'); }}
-          onCancel={() => setIsShipmentChoiceModalOpen(false)}
-      />}
-      {isDataExtractorModalOpen && <DataExtractorModal 
-          isOpen={isDataExtractorModalOpen}
-          onClose={() => setIsDataExtractorModalOpen(false)}
-          onExtractionComplete={handleExtractionComplete}
-      />}
       
       {/* Page Content */}
         {page === 'dashboard' && hasPermission('dashboard', 'view') && (

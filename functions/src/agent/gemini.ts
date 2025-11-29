@@ -26,23 +26,22 @@ export async function runAgent(userMessage: string, apiKey: string) {
 
   const ai = new GoogleGenAI({ apiKey: apiKey });
   
-  const model = ai.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
-      systemInstruction: SYSTEM_INSTRUCTION,
-      tools: [{
-          functionDeclarations: toolsDeclarations
-      }]
-  });
-
-  const chat = model.startChat({
+  const chat = ai.chats.create({
+      model: 'gemini-2.5-flash',
+      config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          tools: [{
+              // @ts-ignore
+              functionDeclarations: toolsDeclarations
+          }]
+      },
       history: [
           { role: 'model', parts: [{ text: 'Entendido. Estoy listo para ayudarte con la gestión de exportaciones.' }] }
       ]
   });
 
-  const result = await chat.sendMessage(userMessage);
-  const response = result.response;
-  const functionCalls = response.functionCalls();
+  const response = await chat.sendMessage({ message: userMessage });
+  const functionCalls = response.functionCalls;
 
   if (functionCalls && functionCalls.length > 0) {
       const functionCall = functionCalls[0];
@@ -59,15 +58,17 @@ export async function runAgent(userMessage: string, apiKey: string) {
           toolResult = "Error: Herramienta no encontrada.";
       }
 
-      const finalResult = await chat.sendMessage([{
-          functionResponse: {
-              name: name,
-              response: { result: toolResult }
-          }
-      }]);
+      const finalResult = await chat.sendMessage({
+          message: [{
+              functionResponse: {
+                  name: name,
+                  response: { result: toolResult }
+              }
+          }]
+      });
       
-      return finalResult.response.text();
+      return finalResult.text;
   }
 
-  return response.text();
+  return response.text;
 }

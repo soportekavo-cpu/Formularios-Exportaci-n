@@ -33,7 +33,7 @@ let ai: GoogleGenAI | null = null;
 if (API_KEY) {
     ai = new GoogleGenAI({ apiKey: API_KEY });
 } else {
-    console.warn("Gemini API Key no encontrada. La funcionalidad de IA estará deshabilitada.");
+    console.log("⚠️ [AI Agent] API Key no detectada. La IA estará deshabilitada hasta que se configure el secreto.");
 }
 
 // --- TOOL DEFINITIONS ---
@@ -84,7 +84,7 @@ export class LogisticsAgent {
     async startChat() {
         const key = getApiKey();
         if (!key) {
-            return "Error de Configuración: No se detectó la API Key de Gemini. Por favor verifica que el secreto VITE_GEMINI_API_KEY esté configurado correctamente en App Hosting y Google Cloud Secret Manager.";
+            return "⚠️ Sistema desconectado: No se ha configurado la API Key de Gemini. \n\nPara el administrador: Ve a la consola de Google Cloud Run, edita la revisión actual y agrega la variable de entorno 'VITE_GEMINI_API_KEY' manualmente apuntando a tu secreto.";
         }
         
         // Re-init AI if key was late-bound (e.g. hydration)
@@ -131,7 +131,11 @@ export class LogisticsAgent {
 
     async sendMessage(message: string): Promise<string> {
         if (!this.chatSession) await this.startChat();
-        if (!this.chatSession) return "Error: No pude iniciar la sesión de chat. Verifica la API Key.";
+        
+        // Si después de intentar iniciar no hay sesión (porque falta la key), devolver error amigable
+        if (!this.chatSession) {
+             return "⚠️ Error: API Key no configurada. Por favor configura VITE_GEMINI_API_KEY en las variables de entorno.";
+        }
 
         try {
             let result = await this.chatSession.sendMessage({ message });

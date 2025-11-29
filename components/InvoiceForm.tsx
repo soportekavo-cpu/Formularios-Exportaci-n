@@ -194,10 +194,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ initialData, onSubmit, onCanc
                     {formData.packages?.map((pkg) => (
                         <div key={pkg.id} className="p-4 bg-muted/50 rounded-lg border space-y-4">
                             <div className="grid grid-cols-12 gap-x-4 gap-y-4 items-end">
-                                <div className="col-span-6 sm:col-span-2"><label className="block text-sm font-medium text-muted-foreground mb-1">Qty</label><input type="number" step="0.01" value={pkg.quantity} onChange={e => handlePackageChange(pkg.id, 'quantity', e.target.value)} className={inputStyles}/></div>
+                                <div className="col-span-6 sm:col-span-2"><label className="block text-sm font-medium text-muted-foreground mb-1">Qty</label><input type="number" inputMode="decimal" step="0.01" value={pkg.quantity} onChange={e => handlePackageChange(pkg.id, 'quantity', e.target.value)} className={inputStyles}/></div>
                                 <div className="col-span-12 sm:col-span-10 md:col-span-5"><label className="block text-sm font-medium text-muted-foreground mb-1">Description</label><textarea value={pkg.description} onChange={e => handlePackageChange(pkg.id, 'description', e.target.value)} className={inputStyles + ' min-h-[50px] py-2'}/></div>
                                 <div className="col-span-12 sm:col-span-4 md:col-span-2"><label className="block text-sm font-medium text-red-500 mb-1">Partida No.</label><input type="text" value={pkg.partidaNo} onChange={e => handlePackageChange(pkg.id, 'partidaNo', e.target.value)} className={inputStyles}/></div>
-                                <div className="col-span-6 sm:col-span-4 md:col-span-2"><label className="block text-sm font-medium text-muted-foreground mb-1">Unit Value</label><input type="number" step="0.01" value={pkg.unitValue} onChange={e => handlePackageChange(pkg.id, 'unitValue', e.target.value)} className={inputStyles}/></div>
+                                <div className="col-span-6 sm:col-span-4 md:col-span-2"><label className="block text-sm font-medium text-muted-foreground mb-1">Unit Value</label><input type="number" inputMode="decimal" step="0.01" value={pkg.unitValue} onChange={e => handlePackageChange(pkg.id, 'unitValue', e.target.value)} className={inputStyles}/></div>
                                 <div className="col-span-6 sm:col-span-4 md:col-span-1 flex items-center justify-end space-x-2">
                                     <button type="button" onClick={() => duplicatePackage(pkg.id)} className="text-primary hover:text-primary/80 p-2 rounded-md hover:bg-accent" title="Duplicar"><DocumentDuplicateIcon/></button>
                                     <button type="button" onClick={() => removePackage(pkg.id)} className="text-destructive hover:text-destructive/80 p-2 rounded-md hover:bg-destructive/10" title="Eliminar"><TrashIcon/></button>
@@ -219,7 +219,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ initialData, onSubmit, onCanc
                             {formData.adjustments?.map(adj => (
                                 <div key={adj.id} className="flex gap-2">
                                     <input type="text" placeholder="Descripción" value={adj.description} onChange={e => handleAdjustmentChange(adj.id, 'description', e.target.value, 'adjustments')} className={inputStyles + ' flex-grow'}/>
-                                    <input type="number" step="0.01" placeholder="Monto (positivo)" value={adj.amount} onChange={e => handleAdjustmentChange(adj.id, 'amount', e.target.value, 'adjustments')} className={inputStyles + ' w-32'}/>
+                                    <input type="number" inputMode="decimal" step="0.01" placeholder="Monto (positivo)" value={adj.amount} onChange={e => handleAdjustmentChange(adj.id, 'amount', e.target.value, 'adjustments')} className={inputStyles + ' w-32'}/>
                                     <button type="button" onClick={() => removeAdjustment(adj.id, 'adjustments')} className="text-destructive hover:text-destructive/80 p-2 rounded-md hover:bg-destructive/10"><TrashIcon/></button>
                                 </div>
                             ))}
@@ -232,7 +232,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ initialData, onSubmit, onCanc
                             {formData.advances?.map(adv => (
                                 <div key={adv.id} className="flex gap-2">
                                     <input type="text" placeholder="Descripción" value={adv.description} onChange={e => handleAdjustmentChange(adv.id, 'description', e.target.value, 'advances')} className={inputStyles + ' flex-grow'}/>
-                                    <input type="number" step="0.01" placeholder="Monto (positivo)" value={adv.amount} onChange={e => handleAdjustmentChange(adv.id, 'amount', e.target.value, 'advances')} className={inputStyles + ' w-32'}/>
+                                    <input type="number" inputMode="decimal" step="0.01" placeholder="Monto (positivo)" value={adv.amount} onChange={e => handleAdjustmentChange(adv.id, 'amount', e.target.value, 'advances')} className={inputStyles + ' w-32'}/>
                                     <button type="button" onClick={() => removeAdjustment(adv.id, 'advances')} className="text-destructive hover:text-destructive/80 p-2 rounded-md hover:bg-destructive/10"><TrashIcon/></button>
                                 </div>
                             ))}

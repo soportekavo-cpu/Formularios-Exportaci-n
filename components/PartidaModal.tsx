@@ -309,8 +309,8 @@ const PartidaModal: React.FC<PartidaModalProps> = ({ isOpen, onClose, onSave, in
                              {validationError && <p className="text-xs text-destructive mt-1 absolute bg-white p-1 border rounded shadow-sm z-10">{validationError}</p>}
                              <span className="text-[10px] text-muted-foreground">{partidaPrefix}</span>
                         </div>
-                        <div><label className="block text-xs font-medium mb-1">Bultos</label><input type="number" name="numBultos" value={partida.numBultos || ''} onChange={handleChange} className={inputClass} readOnly={isReadOnly}/></div>
-                        <div><label className="block text-xs font-medium mb-1">Peso Kg.</label><input type="number" step="0.01" name="pesoKg" value={partida.pesoKg || ''} onChange={handleChange} className={inputClass} readOnly={isReadOnly}/></div>
+                        <div><label className="block text-xs font-medium mb-1">Bultos</label><input type="number" inputMode="decimal" name="numBultos" value={partida.numBultos || ''} onChange={handleChange} className={inputClass} readOnly={isReadOnly}/></div>
+                        <div><label className="block text-xs font-medium mb-1">Peso Kg.</label><input type="number" inputMode="decimal" step="0.01" name="pesoKg" value={partida.pesoKg || ''} onChange={handleChange} className={inputClass} readOnly={isReadOnly}/></div>
                         
                         {/* Editable Peso Qqs with Lock */}
                         <div>
@@ -318,6 +318,7 @@ const PartidaModal: React.FC<PartidaModalProps> = ({ isOpen, onClose, onSave, in
                             <div className="relative flex items-center">
                                 <input 
                                     type="number" 
+                                    inputMode="decimal"
                                     step="0.01" 
                                     name="pesoQqs" 
                                     value={partida.pesoQqs === undefined ? '' : partida.pesoQqs} 
@@ -339,7 +340,7 @@ const PartidaModal: React.FC<PartidaModalProps> = ({ isOpen, onClose, onSave, in
                             </div>
                         </div>
 
-                        <div><label className="block text-xs font-medium mb-1">Fijación ($)</label><input type="number" step="0.01" name="fijacion" value={partida.fijacion || ''} onChange={handleChange} className={inputClass} readOnly={isReadOnly}/></div>
+                        <div><label className="block text-xs font-medium mb-1">Fijación ($)</label><input type="number" inputMode="decimal" step="0.01" name="fijacion" value={partida.fijacion || ''} onChange={handleChange} className={inputClass} readOnly={isReadOnly}/></div>
                         
                         <div className="md:col-span-2 bg-white dark:bg-background border border-blue-200 dark:border-blue-800 rounded-md p-2 flex flex-col justify-center">
                              <span className="text-xs font-semibold text-muted-foreground">Precio Final (Diff + Fijación)</span>

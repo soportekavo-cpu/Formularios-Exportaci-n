@@ -158,7 +158,7 @@ const FobContractModal: React.FC<FobContractModalProps> = ({ isOpen, onClose, co
                         
                         <div><label className="block text-sm font-medium mb-1">Descripción</label><textarea name="description" value={formData.description} onChange={handleChange} className={`${inputStyles} min-h-[60px]`} /></div>
                         
-                        <div><label className="block text-sm font-medium mb-1">Precio ($)</label><input type="number" step="0.01" name="price" value={formData.price} onChange={handleChange} className={inputStyles} /></div>
+                        <div><label className="block text-sm font-medium mb-1">Precio ($)</label><input type="number" inputMode="decimal" step="0.01" name="price" value={formData.price} onChange={handleChange} className={inputStyles} /></div>
                         
                         <div><label className="block text-sm font-medium mb-1">Periodo de Embarque</label><input type="text" name="shipmentPeriod" value={formData.shipmentPeriod} onChange={handleChange} className={inputStyles} placeholder="oct-25 to dec-25"/></div>
                     </div>

@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Contract, LicensePayment, Buyer } from '../types';
 import { PlusIcon, TrashIcon, ExclamationTriangleIcon, CheckCircleIcon } from './Icons';
@@ -208,7 +207,7 @@ const LicenseSettlementDashboard: React.FC<LicenseSettlementDashboardProps> = ({
                                         </div>
                                         <div className="grid grid-cols-2 gap-2 border-t pt-3">
                                             <div className="col-span-2"><input type="text" value={newPaymentConcept} onChange={e => setNewPaymentConcept(e.target.value)} className="bg-background border border-input rounded-md px-3 py-2 w-full" placeholder="Concepto (Opcional)"/></div>
-                                            <div><input type="number" value={newPaymentAmount} onChange={e => setNewPaymentAmount(Number(e.target.value))} className="bg-background border border-input rounded-md px-3 py-2 w-full" placeholder="Monto 0.00"/></div>
+                                            <div><input type="number" inputMode="decimal" value={newPaymentAmount} onChange={e => setNewPaymentAmount(Number(e.target.value))} className="bg-background border border-input rounded-md px-3 py-2 w-full" placeholder="Monto 0.00"/></div>
                                             <div className="flex gap-2">
                                                 <input type="date" value={newPaymentDate} onChange={e => setNewPaymentDate(e.target.value)} className="bg-background border border-input rounded-md px-3 py-2 w-full"/>
                                                 <button onClick={handleAddPayment} className="px-3 py-2 bg-primary text-primary-foreground rounded-md text-sm font-semibold hover:bg-primary/90"><PlusIcon className="w-5 h-5"/></button>

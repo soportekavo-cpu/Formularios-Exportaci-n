@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { Certificate, PackageItem, CertificateType, Container } from '../types';
 import { ArrowLeftIcon, PlusIcon, TrashIcon, DocumentDuplicateIcon } from './Icons';
@@ -317,16 +318,16 @@ const ShipmentForm: React.FC<ShipmentFormProps> = ({ onSubmit, onCancel, initial
                                       </div>
                                       <div className="col-span-6 sm:col-span-3 md:col-span-2">
                                           <label className="block text-sm font-medium text-muted-foreground mb-2">Cantidad</label>
-                                          <input type="number" value={pkg.quantity} onChange={e => handlePackageChange(container.id, pkg.id, 'quantity', e.target.value)} className={inputStyles}/>
+                                          <input type="number" inputMode="decimal" value={pkg.quantity} onChange={e => handlePackageChange(container.id, pkg.id, 'quantity', e.target.value)} className={inputStyles}/>
                                       </div>
                                       <div className="col-span-6 sm:col-span-3 md:col-span-2">
                                           <label className="block text-sm font-medium text-muted-foreground mb-2">P. Neto Unit. (kg)</label>
-                                          <input type="number" step="0.01" value={pkg.unitWeight} onChange={e => handlePackageChange(container.id, pkg.id, 'unitWeight', e.target.value)} className={inputStyles}/>
+                                          <input type="number" inputMode="decimal" step="0.01" value={pkg.unitWeight} onChange={e => handlePackageChange(container.id, pkg.id, 'unitWeight', e.target.value)} className={inputStyles}/>
                                       </div>
                                       {isPacking && (
                                           <div className="col-span-6 sm:col-span-4 md:col-span-2">
                                               <label className="block text-sm font-medium text-muted-foreground mb-2">P. Bruto Unit. (kg)</label>
-                                              <input type="number" step="0.01" value={pkg.grossUnitWeight} onChange={e => handlePackageChange(container.id, pkg.id, 'grossUnitWeight', e.target.value)} className={inputStyles}/>
+                                              <input type="number" inputMode="decimal" step="0.01" value={pkg.grossUnitWeight} onChange={e => handlePackageChange(container.id, pkg.id, 'grossUnitWeight', e.target.value)} className={inputStyles}/>
                                           </div>
                                       )}
                                       <div className="col-span-12 sm:col-span-8 md:col-span-3">

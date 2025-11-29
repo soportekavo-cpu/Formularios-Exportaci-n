@@ -148,6 +148,7 @@ export interface Role {
     id: string;
     name: string;
     description?: string;
+    isDefault?: boolean; // Added for simplified Admin check
     permissions: Permission[];
 }
 

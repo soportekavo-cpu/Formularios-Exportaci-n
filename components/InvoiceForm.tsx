@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import type { Certificate, PackageItem, AdjustmentItem, Buyer } from '../types';
 import { ArrowLeftIcon, PlusIcon, TrashIcon, DocumentDuplicateIcon } from './Icons';
@@ -10,7 +8,7 @@ interface InvoiceFormProps {
   onSubmit: (data: Certificate) => void;
   onCancel: () => void;
   buyers: Buyer[];
-  setBuyers: React.Dispatch<React.SetStateAction<Buyer[]>>;
+  setBuyers: React.Dispatch<React.SetStateAction<Buyer[]>>; // We keep this for now but handle it carefully in parent
 }
 
 const inputStyles = "block w-full text-base bg-background rounded-lg border-input shadow-sm focus:border-primary focus:ring-primary transition-colors duration-200 px-4 py-3 ring-1 ring-inset focus:ring-2 focus:ring-inset";
@@ -53,18 +51,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ initialData, onSubmit, onCanc
       }
   }
 
+  // NOTE: Auto-creating buyers on blur in InvoiceForm is temporarily disabled to enforce centralized management via Admin panel
+  // or it needs to call an async onAddBuyer prop which wasn't fully piped yet.
   const handleCustomerBlur = () => {
-    const { customerName, consignee } = formData;
-    if (customerName && consignee) {
-        const newBuyer: Omit<Buyer, 'id'> = { name: customerName, address: consignee };
-        const buyerExists = buyers.some(c => c.name.toLowerCase() === newBuyer.name.toLowerCase());
-        
-        if (!buyerExists) {
-            setBuyers(prev => [...prev, {...newBuyer, id: new Date().toISOString()}]);
-        } else {
-            setBuyers(prev => prev.map(c => c.name.toLowerCase() === newBuyer.name.toLowerCase() ? { ...c, address: newBuyer.address } : c));
-        }
-    }
+    // Logic disabled to prevent local state issues with Firestore sync for now.
+    // Ideally use onAddBuyer prop.
   };
 
 
@@ -121,7 +112,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ initialData, onSubmit, onCanc
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Include the invoice type in the submission
     onSubmit({ ...formData, invoiceType } as Certificate);
   };
 

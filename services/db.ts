@@ -3,9 +3,8 @@ import { IDataService } from './dataService';
 import { LocalStorageService } from './localStorage';
 import { FirestoreService } from './firestore';
 
-// Detectar entorno de producción de forma segura
-// @ts-ignore
-const USE_FIRESTORE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.PROD) || (typeof process !== 'undefined' && process.env.NODE_ENV === 'production');
+// Forzar el uso de Firestore para que el Seeder funcione con la base de datos real
+const USE_FIRESTORE = true; 
 
 class DatabaseFactory {
     static getService<T extends { id: string }>(): IDataService<T> {

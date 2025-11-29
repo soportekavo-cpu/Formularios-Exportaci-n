@@ -5,13 +5,14 @@ import { PlusIcon, PencilIcon, TrashIcon, ExclamationTriangleIcon } from './Icon
 
 interface ConsigneeManagerProps {
   consignees: Consignee[];
-  setConsignees: React.Dispatch<React.SetStateAction<Consignee[]>>;
+  onSave: (consignee: Consignee) => void;
+  onDelete: (id: string) => void;
 }
 
 const inputStyles = "block w-full text-base bg-background rounded-lg border-input shadow-sm focus:border-primary focus:ring-primary transition-colors duration-200 px-4 py-3 ring-1 ring-inset focus:ring-2 focus:ring-inset";
 const textareaStyles = `${inputStyles} min-h-[110px]`;
 
-const ConsigneeManager: React.FC<ConsigneeManagerProps> = ({ consignees, setConsignees }) => {
+const ConsigneeManager: React.FC<ConsigneeManagerProps> = ({ consignees, onSave, onDelete }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Partial<Consignee> | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -32,19 +33,18 @@ const ConsigneeManager: React.FC<ConsigneeManagerProps> = ({ consignees, setCons
         return;
     }
 
-    setConsignees(prev => {
-        if (editingItem.id) {
-            return prev.map(c => c.id === editingItem.id ? editingItem as Consignee : c);
-        } else {
-            return [...prev, { ...editingItem, id: new Date().toISOString() } as Consignee];
-        }
-    });
+    const consigneeToSave = { 
+        ...editingItem, 
+        id: editingItem.id || new Date().toISOString() 
+    } as Consignee;
+
+    onSave(consigneeToSave);
     closeModal();
   };
   
   const confirmDelete = () => {
     if (deleteId) {
-        setConsignees(prev => prev.filter(c => c.id !== deleteId));
+        onDelete(deleteId);
         setDeleteId(null);
     }
   };

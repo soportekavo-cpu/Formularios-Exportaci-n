@@ -5,13 +5,14 @@ import { PlusIcon, PencilIcon, TrashIcon, ExclamationTriangleIcon } from './Icon
 
 interface NotifierManagerProps {
   notifiers: Notifier[];
-  setNotifiers: React.Dispatch<React.SetStateAction<Notifier[]>>;
+  onSave: (notifier: Notifier) => void;
+  onDelete: (id: string) => void;
 }
 
 const inputStyles = "block w-full text-base bg-background rounded-lg border-input shadow-sm focus:border-primary focus:ring-primary transition-colors duration-200 px-4 py-3 ring-1 ring-inset focus:ring-2 focus:ring-inset";
 const textareaStyles = `${inputStyles} min-h-[110px]`;
 
-const NotifierManager: React.FC<NotifierManagerProps> = ({ notifiers, setNotifiers }) => {
+const NotifierManager: React.FC<NotifierManagerProps> = ({ notifiers, onSave, onDelete }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Partial<Notifier> | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -32,19 +33,18 @@ const NotifierManager: React.FC<NotifierManagerProps> = ({ notifiers, setNotifie
         return;
     }
 
-    setNotifiers(prev => {
-        if (editingItem.id) {
-            return prev.map(c => c.id === editingItem.id ? editingItem as Notifier : c);
-        } else {
-            return [...prev, { ...editingItem, id: new Date().toISOString() } as Notifier];
-        }
-    });
+    const notifierToSave = { 
+        ...editingItem, 
+        id: editingItem.id || new Date().toISOString() 
+    } as Notifier;
+
+    onSave(notifierToSave);
     closeModal();
   };
   
   const confirmDelete = () => {
     if (deleteId) {
-        setNotifiers(prev => prev.filter(c => c.id !== deleteId));
+        onDelete(deleteId);
         setDeleteId(null);
     }
   };

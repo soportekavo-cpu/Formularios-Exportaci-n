@@ -7,12 +7,13 @@ import { removeWhiteBackground } from '../utils/imageProcessing';
 
 interface BuyerManagerProps {
   buyers: Buyer[];
-  setBuyers: React.Dispatch<React.SetStateAction<Buyer[]>>;
+  onSave: (buyer: Buyer) => void;
+  onDelete: (id: string) => void;
 }
 
 const inputStyles = "block w-full text-base bg-background rounded-lg border-input shadow-sm focus:border-primary focus:ring-primary transition-colors duration-200 px-4 py-3 ring-1 ring-inset focus:ring-2 focus:ring-inset";
 
-const BuyerManager: React.FC<BuyerManagerProps> = ({ buyers, setBuyers }) => {
+const BuyerManager: React.FC<BuyerManagerProps> = ({ buyers, onSave, onDelete }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBuyer, setEditingBuyer] = useState<Partial<Buyer> | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -34,19 +35,18 @@ const BuyerManager: React.FC<BuyerManagerProps> = ({ buyers, setBuyers }) => {
         return;
     }
 
-    setBuyers(prev => {
-        if (editingBuyer.id) {
-            return prev.map(b => b.id === editingBuyer.id ? editingBuyer as Buyer : b);
-        } else {
-            return [...prev, { ...editingBuyer, id: new Date().toISOString() } as Buyer];
-        }
-    });
+    const buyerToSave = { 
+        ...editingBuyer, 
+        id: editingBuyer.id || new Date().toISOString() 
+    } as Buyer;
+
+    onSave(buyerToSave);
     closeModal();
   };
   
   const confirmDelete = () => {
     if (deleteId) {
-        setBuyers(prev => prev.filter(b => b.id !== deleteId));
+        onDelete(deleteId);
         setDeleteId(null);
     }
   };

@@ -5,13 +5,14 @@ import { PlusIcon, PencilIcon, TrashIcon } from './Icons';
 
 interface UserManagementProps {
   users: User[];
-  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
+  onSave: (user: User) => void;
+  onDelete: (id: string) => void;
   roles: Role[];
 }
 
 const inputStyles = "block w-full rounded-md border-0 py-2 px-3 bg-background text-foreground ring-1 ring-inset ring-input placeholder:text-muted-foreground focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6";
 
-const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers, roles }) => {
+const UserManagement: React.FC<UserManagementProps> = ({ users, onSave, onDelete, roles }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
 
@@ -28,11 +29,12 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers, roles 
   const handleSave = () => {
     if (!editingUser || !editingUser.name || !editingUser.email || !editingUser.roleId) return;
 
-    if (editingUser.id) {
-      setUsers(users.map(u => u.id === editingUser.id ? editingUser as User : u));
-    } else {
-      setUsers([...users, { ...editingUser, id: new Date().toISOString() } as User]);
-    }
+    const userToSave = { 
+        ...editingUser, 
+        id: editingUser.id || new Date().toISOString() 
+    } as User;
+
+    onSave(userToSave);
     closeModal();
   };
   
@@ -46,7 +48,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers, roles 
           return;
       }
       if(confirm('¿Eliminar usuario?')) {
-          setUsers(users.filter(u => u.id !== id));
+          onDelete(id);
       }
   }
 

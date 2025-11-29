@@ -5,7 +5,8 @@ import { PlusIcon, TrashIcon, PencilIcon, CheckCircleIcon } from './Icons';
 
 interface RoleManagerProps {
     roles: Role[];
-    setRoles: React.Dispatch<React.SetStateAction<Role[]>>;
+    onSave: (role: Role) => void;
+    onDelete: (id: string) => void;
 }
 
 const RESOURCES: { key: Resource; label: string }[] = [
@@ -30,7 +31,7 @@ const ACTIONS: { key: PermissionAction; label: string }[] = [
     { key: 'delete', label: 'Eliminar' },
 ];
 
-const RoleManager: React.FC<RoleManagerProps> = ({ roles, setRoles }) => {
+const RoleManager: React.FC<RoleManagerProps> = ({ roles, onSave, onDelete }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRole, setEditingRole] = useState<Partial<Role> | null>(null);
 
@@ -74,19 +75,19 @@ const RoleManager: React.FC<RoleManagerProps> = ({ roles, setRoles }) => {
     const handleSave = () => {
         if (!editingRole || !editingRole.name) return;
         
-        if (editingRole.id) {
-            setRoles(prev => prev.map(r => r.id === editingRole.id ? editingRole as Role : r));
-        } else {
-            const newRole = { ...editingRole, id: new Date().toISOString() } as Role;
-            setRoles(prev => [...prev, newRole]);
-        }
+        const roleToSave = { 
+            ...editingRole, 
+            id: editingRole.id || new Date().toISOString() 
+        } as Role;
+
+        onSave(roleToSave);
         setIsModalOpen(false);
         setEditingRole(null);
     };
 
     const handleDelete = (id: string) => {
         if (window.confirm('¿Estás seguro? Esto podría afectar a usuarios asignados.')) {
-            setRoles(prev => prev.filter(r => r.id !== id));
+            onDelete(id);
         }
     };
 

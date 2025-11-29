@@ -47,7 +47,7 @@ const RoleManager: React.FC<RoleManagerProps> = ({ roles, onSave, onDelete }) =>
     const handlePermissionToggle = (resource: Resource, action: PermissionAction) => {
         setEditingRole(prev => {
             if (!prev) return null;
-            const currentPerms = prev.permissions || [];
+            const currentPerms = Array.isArray(prev.permissions) ? prev.permissions : [];
             const resourcePermIndex = currentPerms.findIndex(p => p.resource === resource);
             
             let newPerms = [...currentPerms];
@@ -91,6 +91,11 @@ const RoleManager: React.FC<RoleManagerProps> = ({ roles, onSave, onDelete }) =>
         }
     };
 
+    // Helper safely get permissions array
+    const getSafePermissions = (role: Role) => {
+        return Array.isArray(role.permissions) ? role.permissions : [];
+    };
+
     return (
         <div className="bg-card p-4 rounded-lg border">
             <div className="flex justify-between items-center mb-4">
@@ -104,23 +109,37 @@ const RoleManager: React.FC<RoleManagerProps> = ({ roles, onSave, onDelete }) =>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {roles.map(role => (
-                    <div key={role.id} className="border rounded-lg p-4 bg-card hover:border-primary/50 transition-colors">
-                        <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-bold text-lg">{role.name}</h4>
-                            <div className="flex gap-1">
-                                <button onClick={() => openModal(role)} className="p-1 text-muted-foreground hover:text-primary"><PencilIcon className="w-4 h-4" /></button>
-                                {role.id !== 'admin' && <button onClick={() => handleDelete(role.id)} className="p-1 text-muted-foreground hover:text-destructive"><TrashIcon className="w-4 h-4" /></button>}
+                {roles.map(role => {
+                    const perms = getSafePermissions(role);
+                    return (
+                        <div key={role.id} className="border rounded-lg p-4 bg-card hover:border-primary/50 transition-colors">
+                            <div className="flex justify-between items-start mb-2">
+                                <h4 className="font-bold text-lg">{role.name}</h4>
+                                <div className="flex gap-1">
+                                    <button onClick={() => openModal(role)} className="p-1 text-muted-foreground hover:text-primary"><PencilIcon className="w-4 h-4" /></button>
+                                    {role.id !== 'admin' && <button onClick={() => handleDelete(role.id)} className="p-1 text-muted-foreground hover:text-destructive"><TrashIcon className="w-4 h-4" /></button>}
+                                </div>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                                {role.isDefault ? (
+                                    <span className="text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded border border-green-200 uppercase font-bold">ACCESO TOTAL</span>
+                                ) : (
+                                    <>
+                                        {perms.slice(0, 5).map((p, idx) => (
+                                            p && p.resource ? (
+                                                <span key={idx} className="text-[10px] bg-muted px-1.5 py-0.5 rounded border uppercase">
+                                                    {p.resource.replace('documents_', '')}
+                                                </span>
+                                            ) : null
+                                        ))}
+                                        {perms.length > 5 && <span className="text-[10px] text-muted-foreground px-1">+ {perms.length - 5} más</span>}
+                                        {perms.length === 0 && <span className="text-[10px] text-muted-foreground italic">Sin permisos definidos</span>}
+                                    </>
+                                )}
                             </div>
                         </div>
-                        <div className="flex flex-wrap gap-1">
-                            {(role.permissions || []).slice(0, 5).map((p, idx) => (
-                                <span key={idx} className="text-[10px] bg-muted px-1.5 py-0.5 rounded border uppercase">{p.resource.replace('documents_', '')}</span>
-                            ))}
-                            {(role.permissions || []).length > 5 && <span className="text-[10px] text-muted-foreground px-1">+{(role.permissions || []).length - 5} más</span>}
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             {isModalOpen && editingRole && (
@@ -133,6 +152,11 @@ const RoleManager: React.FC<RoleManagerProps> = ({ roles, onSave, onDelete }) =>
                             </div>
                         </div>
                         <div className="p-6 overflow-y-auto flex-1">
+                            {editingRole.isDefault ? (
+                                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800 text-sm mb-4">
+                                    <strong>Nota:</strong> Este rol tiene habilitado el modo "Super Admin" (isDefault: true). Tiene acceso a todo independientemente de los permisos marcados abajo.
+                                </div>
+                            ) : null}
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b">
@@ -142,7 +166,8 @@ const RoleManager: React.FC<RoleManagerProps> = ({ roles, onSave, onDelete }) =>
                                 </thead>
                                 <tbody className="divide-y">
                                     {RESOURCES.map(res => {
-                                        const perm = editingRole.permissions?.find(p => p.resource === res.key);
+                                        const safePerms = Array.isArray(editingRole.permissions) ? editingRole.permissions : [];
+                                        const perm = safePerms.find(p => p.resource === res.key);
                                         return (
                                             <tr key={res.key} className="hover:bg-muted/30">
                                                 <td className="py-3 font-medium pl-2">{res.label}</td>

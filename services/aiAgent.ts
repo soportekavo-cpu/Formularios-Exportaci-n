@@ -1,15 +1,24 @@
-
 import { GoogleGenAI, Type, FunctionDeclaration, Chat } from "@google/genai";
 import { dbService } from "./db";
 import type { Contract, Certificate } from "../types";
 
-// Safe environment variable access
+// Acceso seguro a la API Key (Soporte para Build Time y Runtime Injection)
 const getApiKey = () => {
+  // 1. Runtime Injection (Producción con App Hosting / Docker vía server.js)
+  // @ts-ignore
+  if (typeof window !== 'undefined' && window.env && window.env.VITE_GEMINI_API_KEY) {
+    // @ts-ignore
+    return window.env.VITE_GEMINI_API_KEY;
+  }
+
+  // 2. Vite Build Time (Desarrollo Local)
   // @ts-ignore
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
     // @ts-ignore
     return import.meta.env.VITE_GEMINI_API_KEY;
   }
+  
+  // 3. Process Env (Node/SSR fallback)
   // @ts-ignore
   if (typeof process !== 'undefined' && process.env) {
     // @ts-ignore
@@ -23,6 +32,8 @@ const API_KEY = getApiKey();
 let ai: GoogleGenAI | null = null;
 if (API_KEY) {
     ai = new GoogleGenAI({ apiKey: API_KEY });
+} else {
+    console.warn("Gemini API Key no encontrada. La funcionalidad de IA estará deshabilitada.");
 }
 
 // --- TOOL DEFINITIONS ---
@@ -71,8 +82,14 @@ export class LogisticsAgent {
     }
 
     async startChat() {
+        const key = getApiKey();
+        if (!key) {
+            return "Error de Configuración: No se detectó la API Key de Gemini. Por favor verifica que el secreto VITE_GEMINI_API_KEY esté configurado correctamente en App Hosting y Google Cloud Secret Manager.";
+        }
+        
+        // Re-init AI if key was late-bound (e.g. hydration)
         if (!ai) {
-            return "Error: No se ha configurado la API KEY de Gemini (VITE_GEMINI_API_KEY).";
+             ai = new GoogleGenAI({ apiKey: key });
         }
 
         this.chatSession = ai.chats.create({
@@ -114,7 +131,7 @@ export class LogisticsAgent {
 
     async sendMessage(message: string): Promise<string> {
         if (!this.chatSession) await this.startChat();
-        if (!this.chatSession) return "Error: No pude iniciar la sesión de chat.";
+        if (!this.chatSession) return "Error: No pude iniciar la sesión de chat. Verifica la API Key.";
 
         try {
             let result = await this.chatSession.sendMessage({ message });

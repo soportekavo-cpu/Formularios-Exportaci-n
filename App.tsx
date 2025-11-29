@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Certificate, CertificateType, PackageItem, BankAccount, Company, User, Role, Container, Shipment, ShipmentTask, AnacafeSubtask, TaskPriority, TaskCategory, Partida, Contract, Buyer, Consignee, Notifier, LicensePayment, Resource, PermissionAction } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -32,11 +29,9 @@ import ContractDetailView from './components/ContractDetailView';
 import PartidaModal from './components/PartidaModal';
 import { mapPartidaToCertificate } from './utils/documentMappers';
 import DashboardLayout from './components/DashboardLayout';
-import TraceabilityAssistant from './components/TraceabilityAssistant';
 import HomeDashboard from './components/HomeDashboard';
 import RoleManager from './components/RoleManager';
 import { ExclamationTriangleIcon, SparklesIcon } from './components/Icons';
-import { subscribeToDataChanges } from './services/dataService';
 
 type View = 'list' | 'form' | 'view' | 'new_shipment';
 type Page = 'dashboard' | 'shipments' | 'documents' | 'admin' | 'liquidaciones';
@@ -246,18 +241,6 @@ export default function App() {
 
   const canEditContracts = hasPermission('contracts', 'edit'); 
   
-  // --- DATA REFRESH LOGIC FOR AI AGENT ---
-  useEffect(() => {
-      const unsubscribe = subscribeToDataChanges((event) => {
-          const load = (key: string) => { try { return JSON.parse(window.localStorage.getItem(key) || '[]'); } catch { return []; } };
-          if (event.collection === 'buyers') setBuyers(load('buyers'));
-          if (event.collection === 'contracts') setContracts(load('contracts'));
-          if (event.collection === 'shipments') setShipments(load('shipments'));
-          if (event.collection === 'certificates') setCertificates(load('certificates'));
-      });
-      return () => unsubscribe();
-  }, []);
-
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
@@ -944,7 +927,6 @@ export default function App() {
                 </div>
             </div>
         )}
-        <TraceabilityAssistant />
     </DashboardLayout>
   );
 }

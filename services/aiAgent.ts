@@ -5,15 +5,13 @@ import type { Contract, Certificate } from "../types";
 // Acceso seguro a la API Key
 const getApiKey = () => {
   // 1. Runtime Injection (Producción con App Hosting / Docker vía server.js)
-  // @ts-ignore
-  if (typeof window !== 'undefined' && window.env && window.env.VITE_GEMINI_API_KEY) {
-    return window.env.VITE_GEMINI_API_KEY;
+  if (typeof window !== 'undefined' && (window as any).env && (window as any).env.VITE_GEMINI_API_KEY) {
+    return (window as any).env.VITE_GEMINI_API_KEY;
   }
 
   // 2. Vite Build Time (Desarrollo Local)
-  // @ts-ignore
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
-    return import.meta.env.VITE_GEMINI_API_KEY;
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env.VITE_GEMINI_API_KEY) {
+    return (import.meta as any).env.VITE_GEMINI_API_KEY;
   }
   
   // 3. Local Storage (Respaldo Manual para Admins)

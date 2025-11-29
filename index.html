@@ -8,11 +8,51 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
-              serif: ['Georgia', 'serif'],
+            },
+            colors: {
+              border: 'hsl(var(--border))',
+              input: 'hsl(var(--input))',
+              ring: 'hsl(var(--ring))',
+              background: 'hsl(var(--background))',
+              foreground: 'hsl(var(--foreground))',
+              primary: {
+                DEFAULT: 'hsl(var(--primary))',
+                foreground: 'hsl(var(--primary-foreground))',
+              },
+              secondary: {
+                DEFAULT: 'hsl(var(--secondary))',
+                foreground: 'hsl(var(--secondary-foreground))',
+              },
+              destructive: {
+                DEFAULT: 'hsl(var(--destructive))',
+                foreground: 'hsl(var(--destructive-foreground))',
+              },
+              muted: {
+                DEFAULT: 'hsl(var(--muted))',
+                foreground: 'hsl(var(--muted-foreground))',
+              },
+              accent: {
+                DEFAULT: 'hsl(var(--accent))',
+                foreground: 'hsl(var(--accent-foreground))',
+              },
+              popover: {
+                DEFAULT: 'hsl(var(--popover))',
+                foreground: 'hsl(var(--popover-foreground))',
+              },
+              card: {
+                DEFAULT: 'hsl(var(--card))',
+                foreground: 'hsl(var(--card-foreground))',
+              },
+            },
+            borderRadius: {
+              lg: `0.5rem`,
+              md: `calc(0.5rem - 2px)`,
+              sm: `calc(0.5rem - 4px)`,
             },
           }
         }
@@ -26,12 +66,18 @@
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react-dom/server": "https://aistudiocdn.com/react-dom@^19.2.0/server",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.26.0"
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.26.0",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
+    "node-fetch": "https://aistudiocdn.com/node-fetch@^3.3.2",
+    "firebase-admin": "https://aistudiocdn.com/firebase-admin@^13.6.0",
+    "firebase-functions": "https://aistudiocdn.com/firebase-functions@^7.0.0",
+    "@google-cloud/vertexai": "https://aistudiocdn.com/@google-cloud/vertexai@^1.10.0",
+    "firebase-functions/": "https://aistudiocdn.com/firebase-functions@^7.0.0/"
   }
 }
 </script>
 </head>
-  <body class="bg-slate-50">
+  <body class="bg-background text-foreground">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

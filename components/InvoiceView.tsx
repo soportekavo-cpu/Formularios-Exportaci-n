@@ -4,20 +4,21 @@ import { ArrowLeftIcon, PrintIcon, DownloadIcon } from './Icons';
 import { printComponent } from '../utils/printUtils';
 import InvoicePDF from './InvoicePDF';
 import { numberToWords } from '../utils/numberToWords';
-import { getCompanyInfo } from '../utils/companyData';
+import type { CompanyInfo } from '../utils/companyData';
 
 interface InvoiceViewProps {
   certificate: Certificate | null;
   onBack: () => void;
   logo: string | null;
+  companyInfo: CompanyInfo;
 }
 
-const InvoiceView: React.FC<InvoiceViewProps> = ({ certificate, onBack, logo }) => {
+const InvoiceView: React.FC<InvoiceViewProps> = ({ certificate, onBack, logo, companyInfo }) => {
 
   const handlePrint = () => {
     if (certificate) {
       printComponent(
-        <InvoicePDF certificate={certificate} logo={logo} />, 
+        <InvoicePDF certificate={certificate} logo={logo} companyInfo={companyInfo} />, 
         `Invoice-${certificate.invoiceNo || certificate.id}`,
         { saveOnly: false, orientation: 'portrait' }
       );
@@ -27,7 +28,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ certificate, onBack, logo }) 
   const handleSave = () => {
     if (certificate) {
        printComponent(
-        <InvoicePDF certificate={certificate} logo={logo} />, 
+        <InvoicePDF certificate={certificate} logo={logo} companyInfo={companyInfo} />, 
         `Invoice-${certificate.invoiceNo || certificate.id}`,
         { saveOnly: true, orientation: 'portrait' }
       );
@@ -38,12 +39,11 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ certificate, onBack, logo }) 
     return (
       <div className="p-8 text-center">
         <p>Invoice no encontrado.</p>
-        <button onClick={onBack} className="mt-4 text-indigo-600 hover:text-indigo-800">Volver a la lista</button>
+        <button onClick={onBack} className="mt-4 text-primary hover:text-primary/80">Volver a la lista</button>
       </div>
     );
   }
   
-  const companyInfo = getCompanyInfo(certificate.company);
   const isProben = certificate.company === 'proben';
   
   const formatDate = (dateString: string) => {
@@ -69,13 +69,13 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ certificate, onBack, logo }) 
   );
 
   return (
-    <div className="bg-gray-100 min-h-screen p-4 sm:p-6 lg:p-8 font-sans">
+    <div className="bg-background min-h-screen p-4 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-5xl mx-auto mb-6 print:hidden">
         <div className="flex justify-between items-center">
-            <button onClick={onBack} className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-300"><ArrowLeftIcon className="w-5 h-5" />Volver</button>
+            <button onClick={onBack} className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-foreground/80 bg-card px-4 py-2 rounded-lg shadow-sm border"><ArrowLeftIcon className="w-5 h-5" />Volver</button>
             <div className="flex items-center gap-x-3">
                 <button onClick={handleSave} className="inline-flex items-center gap-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg shadow-sm"><DownloadIcon className="w-5 h-5" />Guardar PDF</button>
-                <button onClick={handlePrint} className="inline-flex items-center gap-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg shadow-sm"><PrintIcon className="w-5 h-5" />Imprimir</button>
+                <button onClick={handlePrint} className="inline-flex items-center gap-2 text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 px-4 py-2 rounded-lg shadow-sm"><PrintIcon className="w-5 h-5" />Imprimir</button>
             </div>
         </div>
       </div>
@@ -88,7 +88,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ certificate, onBack, logo }) 
         }
       `}</style>
 
-      <div id="invoice-paper" className="max-w-5xl mx-auto bg-white p-12 shadow-lg border border-gray-200 rounded-lg text-[#0d223f]">
+      <div id="invoice-paper" className="max-w-5xl mx-auto bg-white p-12 shadow-lg border rounded-lg text-[#0d223f]">
         <header className="flex justify-between items-center">
           <div className="flex flex-col items-center">
               <div className={`flex items-center justify-center p-1 ${isProben ? 'h-20 w-40' : 'h-20 w-20'}`}>
@@ -173,7 +173,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ certificate, onBack, logo }) 
                             <td className="p-3 align-top text-gray-800">{pkg.quantity}</td>
                             <td className="p-3 align-top break-words">
                                 <p className="font-bold text-gray-900 whitespace-pre-wrap">{pkg.description}</p>
-                                {pkg.partidaNo && <p className="text-sm text-gray-500 mt-1">OIC: {pkg.partidaNo}</p>}
+                                {pkg.partidaNo && <p className="text-sm text-red-500 mt-1 font-semibold">OIC: {pkg.partidaNo}</p>}
                             </td>
                             <td className="p-3 align-top text-right text-gray-800">${formatNumber(pkg.unitValue)}</td>
                             <td className="p-3 align-top text-right font-bold text-gray-800">${formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.unitValue) || 0))}</td>

@@ -1,3 +1,4 @@
+
 // Function to convert number to words
 
 const ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
@@ -52,11 +53,14 @@ export function numberToWords(num: number | '' | undefined): string {
     const decimalPart = Math.round((n - integerPart) * 100);
 
     let words = convert(integerPart);
-    words = words.charAt(0).toUpperCase() + words.slice(1);
-    
-    if (decimalPart > 0) {
-        words += ` and ${decimalPart}/100`;
-    }
+    // Capitalize first letter only, rest lowercase for consistency in legal documents
+    words = words.toLowerCase(); 
+    // Optional: Capitalize first letter
+    // words = words.charAt(0).toUpperCase() + words.slice(1);
 
-    return `${words} Dollars`;
+    // Format: "one thousand fifty nine and 46/100.-"
+    
+    const fractionPart = decimalPart > 0 ? `${decimalPart}/100` : '00/100';
+
+    return `${words} and ${fractionPart}.-`;
 }

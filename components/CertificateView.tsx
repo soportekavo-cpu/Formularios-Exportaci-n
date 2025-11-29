@@ -3,23 +3,22 @@ import type { Certificate } from '../types';
 import { ArrowLeftIcon, PrintIcon, DownloadIcon } from './Icons';
 import { printComponent } from '../utils/printUtils';
 import CertificatePDF from './CertificatePDF';
-import { getCompanyInfo } from '../utils/companyData';
+import type { CompanyInfo } from '../utils/companyData';
 
 interface CertificateViewProps {
   certificate: Certificate | null;
   onBack: () => void;
   logo: string | null;
+  companyInfo: CompanyInfo;
 }
 
-const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, logo }) => {
-
-  const companyInfo = getCompanyInfo(certificate?.company);
+const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, logo, companyInfo }) => {
 
   const handlePrint = () => {
     if (certificate) {
       const typeName = certificate.type === 'quality' ? 'Quality' : 'Weight';
       printComponent(
-        <CertificatePDF certificate={certificate} logo={logo} />, 
+        <CertificatePDF certificate={certificate} logo={logo} companyInfo={companyInfo} />, 
         `${typeName}-Certificate-${certificate.certificateNumber || certificate.id}`,
         { saveOnly: false, showFooter: true, companyInfo }
       );
@@ -30,7 +29,7 @@ const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, 
     if (certificate) {
       const typeName = certificate.type === 'quality' ? 'Quality' : 'Weight';
       printComponent(
-        <CertificatePDF certificate={certificate} logo={logo} />, 
+        <CertificatePDF certificate={certificate} logo={logo} companyInfo={companyInfo} />, 
         `${typeName}-Certificate-${certificate.certificateNumber || certificate.id}`,
         { saveOnly: true, showFooter: true, companyInfo }
       );
@@ -41,7 +40,7 @@ const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, 
     return (
       <div className="p-8 text-center">
         <p>Certificado no encontrado.</p>
-        <button onClick={onBack} className="mt-4 text-indigo-600 hover:text-indigo-800">Volver a la lista</button>
+        <button onClick={onBack} className="mt-4 text-primary hover:text-primary/80">Volver a la lista</button>
       </div>
     );
   }
@@ -54,25 +53,18 @@ const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, 
     return new Intl.DateTimeFormat('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }).format(date);
   }
 
-  // FIX: Added a robust number formatting function to handle potentially non-numeric values.
-  const formatNumber = (value: unknown): string => {
-    return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value) || 0);
+  const formatNumber = (value: unknown, digits: number = 2): string => {
+    return new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Number(value) || 0);
   };
+
+  const allPackages = certificate.containers?.flatMap(c => c.packages) || [];
   
-  const subtotals = (certificate.packages || []).reduce((acc, pkg) => {
-      const type = (pkg.type || '').toUpperCase();
-      const totalWeight = (Number(pkg.quantity) || 0) * (Number(pkg.unitWeight) || 0);
-      if (!acc[type]) {
-        acc[type] = 0;
-      }
-      acc[type] += totalWeight;
-      return acc;
-  }, {} as Record<string, number>);
+  const containerAndSealNos = certificate.containers?.map(c => `${c.containerNo}${c.sealNo ? ` / ${c.sealNo}`: ''}`).join(', ');
 
   const InfoBlock: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
     <div className="min-w-0">
         <h3 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{label}</h3>
-        <div className="mt-1 text-[11px] leading-relaxed text-gray-900 whitespace-pre-wrap break-words">{children}</div>
+        <div className="mt-1 text-[11px] leading-relaxed text-gray-800 whitespace-pre-wrap break-words">{children}</div>
     </div>
   );
   
@@ -80,12 +72,12 @@ const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, 
   const isWeightCert = certificate.type === 'weight';
 
   return (
-    <div className="bg-gray-100 min-h-screen p-4 sm:p-6 lg:p-8 font-sans">
+    <div className="bg-background min-h-screen p-4 sm:p-6 lg:p-8 font-sans">
         <div className="max-w-5xl mx-auto mb-6 print:hidden">
             <div className="flex justify-between items-center">
                  <button
                     onClick={onBack}
-                    className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-300"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-foreground/80 bg-card px-4 py-2 rounded-lg shadow-sm border"
                 >
                     <ArrowLeftIcon className="w-5 h-5" />
                     Volver
@@ -100,7 +92,7 @@ const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, 
                     </button>
                     <button
                         onClick={handlePrint}
-                        className="inline-flex items-center gap-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg shadow-sm"
+                        className="inline-flex items-center gap-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg shadow-sm"
                     >
                         <PrintIcon className="w-5 h-5" />
                         Imprimir
@@ -126,7 +118,7 @@ const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, 
         }
       `}</style>
 
-      <div id="certificate-paper" className="max-w-5xl mx-auto bg-white p-8 sm:p-12 shadow-lg border border-gray-200 rounded-lg">
+      <div id="certificate-paper" className="max-w-5xl mx-auto bg-white text-gray-900 p-8 sm:p-12 shadow-lg border rounded-lg">
           {/* Header */}
           {isWeightCert || isQualityCert ? (
             <>
@@ -173,73 +165,116 @@ const CertificateView: React.FC<CertificateViewProps> = ({ certificate, onBack, 
             <p className="text-xs text-gray-500 mt-1">Nº: {certificate.certificateNumber || certificate.id.substring(0, 8).toUpperCase()}</p>
           </section>
 
-          <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <InfoBlock label="Seller">{certificate.shipper}</InfoBlock>
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <InfoBlock label="Consignee">{certificate.consignee}</InfoBlock>
             <InfoBlock label="Notify">{certificate.notify}</InfoBlock>
           </section>
 
           <section className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6 p-4 bg-slate-50 rounded-lg border">
-            <InfoBlock label="Certificate Date">{formatDate(certificate.certificateDate)}</InfoBlock>
             <InfoBlock label="Shipment Date">{formatDate(certificate.shipmentDate)}</InfoBlock>
             <InfoBlock label="Bill of Lading No.">{certificate.billOfLadingNo}</InfoBlock>
-            <InfoBlock label="Container No.">{certificate.containerNo}</InfoBlock>
+            <InfoBlock label="Container / Seal No(s).">{containerAndSealNos}</InfoBlock>
             <InfoBlock label="Shipping Line">{certificate.shippingLine}</InfoBlock>
             <InfoBlock label="Destination">{certificate.destination}</InfoBlock>
             <InfoBlock label="Product">{certificate.product}</InfoBlock>
+            {certificate.contractNo && <InfoBlock label="Contract No.">{certificate.contractNo}</InfoBlock>}
           </section>
 
           <main>
             <h3 className="text-sm font-semibold text-gray-800 mb-2">Details</h3>
-            <div className="flow-root">
-              <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-                <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                  <table className="min-w-full">
-                    <thead className="border-b border-gray-300">
-                      <tr>
-                        <th scope="col" className="py-2 pl-4 pr-3 text-left text-xs font-semibold text-gray-900 sm:pl-0">TYPE</th>
-                        <th scope="col" className="px-3 py-2 text-right text-xs font-semibold text-gray-900">QUANTITY</th>
-                        <th scope="col" className="px-3 py-2 text-right text-xs font-semibold text-gray-900">UNIT WEIGHT (KG)</th>
-                        <th scope="col" className="px-3 py-2 text-left text-xs font-semibold text-gray-900">MARKS</th>
-                        {isQualityCert && (
-                            <th scope="col" className="px-3 py-2 text-left text-xs font-semibold text-gray-900">QUALITY</th>
-                        )}
-                        <th scope="col" className="py-2 pl-3 pr-4 text-right text-xs font-semibold text-gray-900 sm:pr-0">TOTAL WEIGHT (KG)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {(certificate.packages || []).map((pkg) => (
-                        <tr key={pkg.id}>
-                          <td className="whitespace-nowrap py-2 pl-4 pr-3 text-xs font-medium text-gray-900 sm:pl-0">{pkg.type}</td>
-                          <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500 text-right">{pkg.quantity}</td>
-                          <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500 text-right">{formatNumber(pkg.unitWeight)}</td>
-                          <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500">{pkg.marks}</td>
-                          {isQualityCert && (
-                              <td className="whitespace-pre-wrap px-3 py-2 text-xs text-gray-500 break-words max-w-xs">{pkg.quality}</td>
-                          )}
-                          <td className="whitespace-nowrap py-2 pl-3 pr-4 text-xs font-medium text-gray-900 sm:pr-0 text-right">{formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.unitWeight) || 0))}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+             {certificate.containers && certificate.containers.length > 1 ? (
+                certificate.containers.map((container) => {
+                    const containerSubtotalQty = container.packages.reduce((sum, p) => sum + Number(p.quantity || 0), 0);
+                    const containerSubtotalNet = container.packages.reduce((sum, p) => sum + ((Number(p.quantity) || 0) * (Number(p.unitWeight) || 0)), 0);
+
+                    return (
+                        <div key={container.id} className="mb-6 last:mb-0">
+                            <div className="p-2 bg-slate-100 rounded-t-md border-b-2 border-slate-300">
+                                <h4 className="text-sm font-bold text-gray-800">
+                                    CONTAINER: {container.containerNo}
+                                    {container.sealNo && ` / SEAL: ${container.sealNo}`}
+                                </h4>
+                            </div>
+                            <div className="flow-root">
+                                <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                                    <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+                                        <table className="min-w-full">
+                                            <thead className="border-b border-gray-300">
+                                                <tr>
+                                                    <th scope="col" className="py-2 pl-4 pr-3 text-left text-xs font-semibold text-gray-900 sm:pl-0">TYPE</th>
+                                                    <th scope="col" className="px-3 py-2 text-right text-xs font-semibold text-gray-900">QUANTITY</th>
+                                                    <th scope="col" className="px-3 py-2 text-right text-xs font-semibold text-gray-900">UNIT WEIGHT (KG)</th>
+                                                    <th scope="col" className="px-3 py-2 text-left text-xs font-semibold text-gray-900">MARKS</th>
+                                                    {isQualityCert && <th scope="col" className="px-3 py-2 text-left text-xs font-semibold text-gray-900">QUALITY</th>}
+                                                    <th scope="col" className="py-2 pl-3 pr-4 text-right text-xs font-semibold text-gray-900 sm:pr-0">TOTAL WEIGHT (KG)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200">
+                                                {container.packages.map((pkg) => (
+                                                    <tr key={pkg.id}>
+                                                        <td className="whitespace-nowrap py-2 pl-4 pr-3 text-xs font-medium text-gray-900 sm:pl-0">{pkg.type}</td>
+                                                        <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500 text-right">{pkg.quantity}</td>
+                                                        <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500 text-right">{formatNumber(pkg.unitWeight)}</td>
+                                                        <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500">{pkg.marks}</td>
+                                                        {isQualityCert && <td className="whitespace-pre-wrap px-3 py-2 text-xs text-gray-500 break-words max-w-xs">{pkg.quality}</td>}
+                                                        <td className="whitespace-nowrap py-2 pl-3 pr-4 text-xs font-medium text-gray-900 sm:pr-0 text-right">{formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.unitWeight) || 0))}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                            <tfoot className="border-t-2 border-gray-400">
+                                                <tr>
+                                                    <td className="py-2 pl-4 pr-3 text-left text-xs font-bold text-gray-900 sm:pl-0">Subtotals</td>
+                                                    <td className="px-3 py-2 text-right text-xs font-bold text-gray-900">{formatNumber(containerSubtotalQty, 0)}</td>
+                                                    <td colSpan={isQualityCert ? 3 : 2}></td>
+                                                    <td className="py-2 pl-3 pr-4 text-right text-xs font-bold text-gray-900 sm:pr-0">{formatNumber(containerSubtotalNet)}</td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })
+            ) : (
+                <div className="flow-root">
+                    <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                        <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+                            <table className="min-w-full">
+                                <thead className="border-b border-gray-300">
+                                    <tr>
+                                        <th scope="col" className="py-2 pl-4 pr-3 text-left text-xs font-semibold text-gray-900 sm:pl-0">TYPE</th>
+                                        <th scope="col" className="px-3 py-2 text-right text-xs font-semibold text-gray-900">QUANTITY</th>
+                                        <th scope="col" className="px-3 py-2 text-right text-xs font-semibold text-gray-900">UNIT WEIGHT (KG)</th>
+                                        <th scope="col" className="px-3 py-2 text-left text-xs font-semibold text-gray-900">MARKS</th>
+                                        {isQualityCert && <th scope="col" className="px-3 py-2 text-left text-xs font-semibold text-gray-900">QUALITY</th>}
+                                        <th scope="col" className="py-2 pl-3 pr-4 text-right text-xs font-semibold text-gray-900 sm:pr-0">TOTAL WEIGHT (KG)</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {allPackages.map((pkg) => (
+                                        <tr key={pkg.id}>
+                                            <td className="whitespace-nowrap py-2 pl-4 pr-3 text-xs font-medium text-gray-900 sm:pl-0">{pkg.type}</td>
+                                            <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500 text-right">{pkg.quantity}</td>
+                                            <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500 text-right">{formatNumber(pkg.unitWeight)}</td>
+                                            <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500">{pkg.marks}</td>
+                                            {isQualityCert && <td className="whitespace-pre-wrap px-3 py-2 text-xs text-gray-500 break-words max-w-xs">{pkg.quality}</td>}
+                                            <td className="whitespace-nowrap py-2 pl-3 pr-4 text-xs font-medium text-gray-900 sm:pr-0 text-right">{formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.unitWeight) || 0))}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-              </div>
-            </div>
+            )}
             
-            {/* Totals and Signature Block */}
             <div className="mt-6">
                 <div className="flex justify-end">
-                    <div className="w-full max-w-sm space-y-2">
-                        {Object.entries(subtotals).map(([type, total]) => (
-                            <div key={type} className="flex justify-between text-xs text-gray-600">
-                                <span>TOTAL WEIGHT {type.toUpperCase()}:</span>
-                                <span className="font-medium text-gray-700">{formatNumber(total)} KG.</span>
-                            </div>
-                        ))}
-                         <div className="flex justify-between font-bold text-xs text-gray-900 pt-3 mt-3 border-t-2 border-gray-900">
-                            <span>TOTAL NET WEIGHT:</span>
-                            {/* FIX: Use the formatNumber helper to safely format the totalNetWeight. */}
-                            <span>{formatNumber(certificate.totalNetWeight)} KG.</span>
+                    <div className="w-full max-w-sm">
+                         <div className="flex justify-between items-baseline text-gray-900 pt-2 mt-3 border-t-2 border-gray-900">
+                            <span className="font-semibold text-xs">TOTAL NET WEIGHT:</span>
+                            <span className="font-bold text-sm">{formatNumber(certificate.totalNetWeight)} KG.</span>
                         </div>
                     </div>
                 </div>

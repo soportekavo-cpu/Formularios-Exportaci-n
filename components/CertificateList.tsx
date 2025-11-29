@@ -1,5 +1,8 @@
+
+
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import type { Certificate, CertificateType } from '../types';
+import type { Certificate, CertificateType, PermissionAction, Resource } from '../types';
 import { PlusIcon, PencilIcon, TrashIcon, EyeIcon, DocumentDuplicateIcon, CurrencyDollarIcon, ChevronDownIcon } from './Icons';
 
 interface CertificateListProps {
@@ -12,10 +15,11 @@ interface CertificateListProps {
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
   onCreatePaymentInstruction: (id: string) => void;
+  getPermission: (resource: Resource, action: PermissionAction) => boolean;
 }
 
 const CertificateList: React.FC<CertificateListProps> = ({ 
-    certificates, activeCertType, onAdd, onUnifiedAdd, onEdit, onView, onDelete, onDuplicate, onCreatePaymentInstruction 
+    certificates, activeCertType, onAdd, onUnifiedAdd, onEdit, onView, onDelete, onDuplicate, onCreatePaymentInstruction, getPermission
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' }>({
@@ -25,6 +29,19 @@ const CertificateList: React.FC<CertificateListProps> = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Map activeCertType to the correct granular resource string
+  const resourceType: Resource = 
+      activeCertType === 'weight' ? 'documents_weight' :
+      activeCertType === 'quality' ? 'documents_quality' :
+      activeCertType === 'packing' ? 'documents_packing' :
+      activeCertType === 'porte' ? 'documents_porte' :
+      activeCertType === 'invoice' ? 'documents_invoice' :
+      'documents_payment';
+
+  // Check specific permissions for this document type
+  const canCreate = getPermission(resourceType, 'create');
+  const canEdit = getPermission(resourceType, 'edit');
+  const canDelete = getPermission(resourceType, 'delete');
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -54,8 +71,10 @@ const CertificateList: React.FC<CertificateListProps> = ({
         let bValue: any;
 
         if (key === 'totalPackages') {
-            aValue = (a.packages || []).reduce((sum, p) => sum + Number(p.quantity || 0), 0);
-            bValue = (b.packages || []).reduce((sum, p) => sum + Number(p.quantity || 0), 0);
+            const allPackagesA = a.containers?.flatMap(c => c.packages) || [];
+            const allPackagesB = b.containers?.flatMap(c => c.packages) || [];
+            aValue = allPackagesA.reduce((sum, p) => sum + Number(p.quantity || 0), 0);
+            bValue = allPackagesB.reduce((sum, p) => sum + Number(p.quantity || 0), 0);
         } else {
             aValue = a[key as keyof Certificate];
             bValue = b[key as keyof Certificate];
@@ -63,6 +82,11 @@ const CertificateList: React.FC<CertificateListProps> = ({
         
         aValue = aValue ?? '';
         bValue = bValue ?? '';
+
+        if (key === 'containerNo') {
+          aValue = a.containers?.[0]?.containerNo || '';
+          bValue = b.containers?.[0]?.containerNo || '';
+        }
 
         if (typeof aValue === 'number' && typeof bValue === 'number') {
              if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
@@ -90,7 +114,8 @@ const CertificateList: React.FC<CertificateListProps> = ({
 
     const lowercasedFilter = searchTerm.toLowerCase();
     return sortableItems.filter(cert => {
-      const qualityString = (cert.packages || [])
+      const allPackages = cert.containers?.flatMap(c => c.packages) || [];
+      const qualityString = allPackages
         .map(p => p.quality)
         .filter(Boolean)
         .join(' ')
@@ -99,7 +124,7 @@ const CertificateList: React.FC<CertificateListProps> = ({
       return (cert.company || 'dizano').toLowerCase().includes(lowercasedFilter) ||
         (cert.consignee || '').toLowerCase().includes(lowercasedFilter) ||
         (cert.customerName || '').toLowerCase().includes(lowercasedFilter) ||
-        (cert.containerNo || '').toLowerCase().includes(lowercasedFilter) ||
+        (cert.containers || []).some(c => (c.containerNo || '').toLowerCase().includes(lowercasedFilter)) ||
         (cert.driverName || '').toLowerCase().includes(lowercasedFilter) ||
         (cert.licensePlate || '').toLowerCase().includes(lowercasedFilter) ||
         (cert.invoiceNo || '').toLowerCase().includes(lowercasedFilter) ||
@@ -109,11 +134,11 @@ const CertificateList: React.FC<CertificateListProps> = ({
   }, [certificates, searchTerm, sortConfig]);
 
   const SortableHeader: React.FC<{ sortKey: string; children: React.ReactNode; className?: string }> = ({ sortKey, children, className }) => (
-    <th scope="col" className={`${className} cursor-pointer transition-colors hover:bg-gray-50`} onClick={() => requestSort(sortKey)}>
+    <th scope="col" className={`${className} cursor-pointer transition-colors hover:bg-accent`} onClick={() => requestSort(sortKey)}>
       <div className="flex items-center gap-x-1">
         <span>{children}</span>
         {sortConfig.key === sortKey && (
-          <span className="text-gray-400 text-xs">{sortConfig.direction === 'ascending' ? '▲' : '▼'}</span>
+          <span className="text-muted-foreground text-xs">{sortConfig.direction === 'ascending' ? '▲' : '▼'}</span>
         )}
       </div>
     </th>
@@ -166,21 +191,30 @@ const CertificateList: React.FC<CertificateListProps> = ({
     addButtonText = 'Crear Instrucción';
   }
 
+  const getContainerDisplay = (cert: Certificate) => {
+    if (!cert.containers || cert.containers.length === 0) return '';
+    const firstTwo = cert.containers.slice(0, 2).map(c => c.containerNo).join(', ');
+    if (cert.containers.length > 2) {
+      return `${firstTwo}, (+${cert.containers.length - 2})`;
+    }
+    return firstTwo;
+  };
+
   return (
-    <div className="pt-8">
+    <div>
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
-          <h1 className="text-2xl font-bold leading-6 text-gray-900">{title}</h1>
-          <p className="mt-2 text-sm text-gray-700">{description}</p>
+          <h1 className="text-2xl font-bold leading-6 text-foreground">{title}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{description}</p>
         </div>
         <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-          {activeCertType !== 'payment' && (
+          {canCreate && activeCertType !== 'payment' && (
             isShipmentDoc ? (
               <div className="relative inline-flex rounded-md shadow-sm" ref={menuRef}>
                 <button
                   type="button"
                   onClick={onUnifiedAdd}
-                  className="inline-flex items-center gap-x-2 rounded-l-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                  className="inline-flex items-center gap-x-2 rounded-l-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                   <PlusIcon className="w-5 h-5" />
                   Crear Nuevo Embarque
@@ -188,17 +222,17 @@ const CertificateList: React.FC<CertificateListProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="relative -ml-px inline-flex items-center rounded-r-md bg-indigo-600 p-2 text-white hover:bg-indigo-500 focus:z-10"
+                  className="relative -ml-px inline-flex items-center rounded-r-md bg-primary p-2 text-primary-foreground hover:bg-primary/90 focus:z-10"
                 >
                   <span className="sr-only">Abrir opciones</span>
                   <ChevronDownIcon className="h-5 w-5" />
                 </button>
                 {isMenuOpen && (
-                  <div className="absolute right-0 z-10 mt-12 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  <div className="absolute right-0 z-10 mt-12 w-56 origin-top-right rounded-md bg-popover shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none border">
                     <div className="py-1">
                       <button
                         onClick={() => { onAdd(); setIsMenuOpen(false); }}
-                        className="w-full text-left text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100"
+                        className="w-full text-left text-popover-foreground block px-4 py-2 text-sm hover:bg-accent"
                       >
                         {manualAddText}
                       </button>
@@ -210,7 +244,7 @@ const CertificateList: React.FC<CertificateListProps> = ({
                <button
                 type="button"
                 onClick={onAdd}
-                className="inline-flex items-center gap-x-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                className="inline-flex items-center gap-x-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 <PlusIcon className="w-5 h-5" />
                 {addButtonText}
@@ -228,7 +262,7 @@ const CertificateList: React.FC<CertificateListProps> = ({
             id="search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="block w-full rounded-md border-0 py-2 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            className="block w-full rounded-md border-0 py-2 px-3 text-foreground ring-1 ring-inset ring-input placeholder:text-muted-foreground focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6"
             placeholder={searchPlaceholder}
         />
       </div>
@@ -237,32 +271,32 @@ const CertificateList: React.FC<CertificateListProps> = ({
         <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
           <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
             {sortedAndFilteredCertificates.length > 0 ? (
-              <table className="min-w-full divide-y divide-gray-300">
+              <table className="min-w-full divide-y divide-border">
                 <thead>
                   <tr>
                     {isInvoice ? (
                       <>
-                        <SortableHeader sortKey="certificateDate" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">Fecha</SortableHeader>
-                        <SortableHeader sortKey="invoiceNo" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Nº Invoice</SortableHeader>
-                        <SortableHeader sortKey="customerName" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Bill To</SortableHeader>
-                        <SortableHeader sortKey="totalAmount" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Total</SortableHeader>
+                        <SortableHeader sortKey="certificateDate" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-foreground sm:pl-0">Fecha</SortableHeader>
+                        <SortableHeader sortKey="invoiceNo" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Nº Invoice</SortableHeader>
+                        <SortableHeader sortKey="customerName" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Bill To</SortableHeader>
+                        <SortableHeader sortKey="totalAmount" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Total</SortableHeader>
                       </>
                     ) : isPayment ? (
                       <>
-                        <SortableHeader sortKey="certificateDate" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">Fecha</SortableHeader>
-                        <SortableHeader sortKey="customerName" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Cliente</SortableHeader>
-                        <SortableHeader sortKey="contractNo" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Contrato</SortableHeader>
-                        <SortableHeader sortKey="totalAmount" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Monto</SortableHeader>
+                        <SortableHeader sortKey="certificateDate" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-foreground sm:pl-0">Fecha</SortableHeader>
+                        <SortableHeader sortKey="customerName" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Cliente</SortableHeader>
+                        <SortableHeader sortKey="contractNo" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Contrato</SortableHeader>
+                        <SortableHeader sortKey="totalAmount" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Monto</SortableHeader>
                       </>
                     ) : (
                       <>
-                        <SortableHeader sortKey="consignee" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">{isPorte ? 'Destino' : 'Consignatario'}</SortableHeader>
-                        <SortableHeader sortKey={isPorte ? 'driverName' : 'containerNo'} className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">{isPorte ? 'Piloto' : 'Nº de Contenedor'}</SortableHeader>
-                        <SortableHeader sortKey={isPacking || isPorte ? 'certificateDate' : 'shipmentDate'} className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">{isPacking ? 'Fecha de Empaque' : isPorte ? 'Fecha' : 'Fecha de Embarque'}</SortableHeader>
+                        <SortableHeader sortKey="consignee" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-foreground sm:pl-0">{isPorte ? 'Destino' : 'Consignatario'}</SortableHeader>
+                        <SortableHeader sortKey={isPorte ? 'driverName' : 'containerNo'} className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">{isPorte ? 'Piloto' : 'Nº de Contenedor'}</SortableHeader>
+                        <SortableHeader sortKey={isPacking || isPorte ? 'certificateDate' : 'shipmentDate'} className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">{isPacking ? 'Fecha de Empaque' : isPorte ? 'Fecha' : 'Fecha de Embarque'}</SortableHeader>
                         {isQuality ? (
-                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Calidad</th>
+                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Calidad</th>
                         ) : (
-                            <SortableHeader sortKey={isWeight || isPorte ? 'totalNetWeight' : 'totalPackages'} className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                            <SortableHeader sortKey={isWeight || isPorte ? 'totalNetWeight' : 'totalPackages'} className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">
                                 {isWeight || isPorte ? 'Peso Neto (kgs)' : 'Total Bultos'}
                             </SortableHeader>
                         )}
@@ -273,63 +307,74 @@ const CertificateList: React.FC<CertificateListProps> = ({
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
+                <tbody className="divide-y divide-border bg-card">
                   {sortedAndFilteredCertificates.map((cert) => (
-                    <tr key={cert.id} className="hover:bg-gray-50">
+                    <tr key={cert.id} className="hover:bg-accent">
                       {isInvoice ? (
                           <>
-                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">{cert.certificateDate}</td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{cert.invoiceNo}</td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{cert.customerName}</td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-foreground sm:pl-0">{cert.certificateDate}</td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-2">
+                                    {cert.invoiceNo}
+                                    {cert.invoiceType === 'general' && (
+                                        <span className="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-400 ring-1 ring-inset ring-slate-500/10">Varios</span>
+                                    )}
+                                </div>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-muted-foreground">{cert.customerName}</td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-muted-foreground">
                                 ${(Number(cert.totalAmount) || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                             </td>
                           </>
                       ) : isPayment ? (
                           <>
-                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">{cert.certificateDate}</td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{cert.customerName}</td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{cert.contractNo}</td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-foreground sm:pl-0">{cert.certificateDate}</td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-muted-foreground">{cert.customerName}</td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-muted-foreground">{cert.contractNo}</td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-muted-foreground">
                                 ${(Number(cert.totalAmount) || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                             </td>
                           </>
                       ) : (
                           <>
-                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">{(cert.consignee || '').split('\n')[0]}</td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{isPorte ? cert.driverName : cert.containerNo || ''}</td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{isPacking || isPorte ? cert.certificateDate : (cert.shipmentDate || '')}</td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-foreground sm:pl-0">{(cert.consignee || '').split('\n')[0]}</td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-muted-foreground">{isPorte ? cert.driverName : getContainerDisplay(cert)}</td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-muted-foreground">{isPacking || isPorte ? cert.certificateDate : (cert.shipmentDate || '')}</td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-muted-foreground">
                               {isWeight || isPorte
                                   ? (Number(cert.totalNetWeight) || 0).toFixed(2) 
                                   : isQuality
-                                      ? (cert.packages || []).map(p => p.quality).filter(Boolean).join(', ')
-                                      : (cert.packages || []).reduce((sum, p) => sum + Number(p.quantity || 0), 0)
+                                      ? (cert.containers?.flatMap(c => c.packages) || []).map(p => p.quality).filter(Boolean).join(', ')
+                                      : (cert.containers?.flatMap(c => c.packages) || []).reduce((sum, p) => sum + Number(p.quantity || 0), 0)
                               }
                             </td>
                           </>
                       )}
                       <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
                         <div className="flex justify-end items-center gap-x-4">
-                          <button onClick={() => onView(cert.id)} className="text-indigo-600 hover:text-indigo-900" title="Ver">
+                          <button onClick={() => onView(cert.id)} className="text-primary hover:text-primary/80" title="Ver">
                             <EyeIcon />
                           </button>
-                          {isInvoice && (
-                              <button onClick={() => onCreatePaymentInstruction(cert.id)} className="text-green-600 hover:text-green-900" title="Crear Instrucciones de Pago">
+                          {isInvoice && getPermission('documents_payment', 'create') && (
+                              <button onClick={() => onCreatePaymentInstruction(cert.id)} className="text-green-600 hover:text-green-500" title="Crear Instrucciones de Pago">
                                 <CurrencyDollarIcon />
                               </button>
                           )}
-                          {!isPayment && (
-                            <button onClick={() => onDuplicate(cert.id)} className="text-gray-600 hover:text-gray-900" title="Duplicar">
+                          {canCreate && !isPayment && (
+                            <button onClick={() => onDuplicate(cert.id)} className="text-muted-foreground hover:text-foreground" title="Duplicar">
                                 <DocumentDuplicateIcon />
                             </button>
                           )}
-                          <button onClick={() => onEdit(cert.id)} className="text-gray-600 hover:text-gray-900" title="Editar">
-                             <PencilIcon />
-                          </button>
-                          <button onClick={() => onDelete(cert.id)} className="text-red-600 hover:text-red-900" title="Eliminar">
-                            <TrashIcon />
-                          </button>
+                          {canEdit && (
+                            <button onClick={() => onEdit(cert.id)} className="text-muted-foreground hover:text-foreground" title="Editar">
+                               <PencilIcon />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button onClick={() => onDelete(cert.id)} className="text-destructive hover:text-destructive/80" title="Eliminar">
+                              <TrashIcon />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -337,18 +382,18 @@ const CertificateList: React.FC<CertificateListProps> = ({
                 </tbody>
               </table>
             ) : (
-                <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <div className="text-center py-12 border-2 border-dashed border-border rounded-lg">
+                    <svg className="mx-auto h-12 w-12 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
                     </svg>
-                    <h3 className="mt-2 text-sm font-semibold text-gray-900">{searchTerm ? 'No se encontraron documentos' : 'No hay documentos'}</h3>
-                    <p className="mt-1 text-sm text-gray-500">{searchTerm ? 'Intenta con otros términos de búsqueda.' : isPorte ? 'Crea tu primera carta de porte para empezar.' : isInvoice ? 'Crea tu primer invoice para empezar.' : isPayment ? 'Crea instrucciones de pago desde un invoice existente.' : 'Crea tu primer embarque para empezar.'}</p>
-                    {!searchTerm && activeCertType !== 'payment' && (
+                    <h3 className="mt-2 text-sm font-semibold text-foreground">{searchTerm ? 'No se encontraron documentos' : 'No hay documentos'}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{searchTerm ? 'Intenta con otros términos de búsqueda.' : isPorte ? 'Crea tu primera carta de porte para empezar.' : isInvoice ? 'Crea tu primer invoice para empezar.' : isPayment ? 'Crea instrucciones de pago desde un invoice existente.' : 'Crea tu primer embarque para empezar.'}</p>
+                    {!searchTerm && canCreate && activeCertType !== 'payment' && (
                         <div className="mt-6">
                             {isShipmentDoc ? (
-                                <button type="button" onClick={onUnifiedAdd} className="inline-flex items-center gap-x-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"><PlusIcon className="w-5 h-5" />Crear Nuevo Embarque</button>
+                                <button type="button" onClick={onUnifiedAdd} className="inline-flex items-center gap-x-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"><PlusIcon className="w-5 h-5" />Crear Nuevo Embarque</button>
                             ) : (
-                                <button type="button" onClick={onAdd} className="inline-flex items-center gap-x-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"><PlusIcon className="w-5 h-5" />{addButtonText}</button>
+                                <button type="button" onClick={onAdd} className="inline-flex items-center gap-x-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"><PlusIcon className="w-5 h-5" />{addButtonText}</button>
                             )}
                         </div>
                     )}

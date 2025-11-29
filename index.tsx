@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+// FIX: Switched to a default import for the App component to align with project conventions.
 import App from './App';
 import './styles.css';
 

@@ -1,16 +1,17 @@
 import React from 'react';
 import type { Certificate } from '../types';
-import { getCompanyInfo } from '../utils/companyData';
+import type { CompanyInfo } from '../utils/companyData';
 
 interface PackingListPDFProps {
   certificate: Certificate;
   logo: string | null;
+  companyInfo: CompanyInfo;
 }
 
-const PackingListPDF: React.FC<PackingListPDFProps> = ({ certificate, logo }) => {
+const PackingListPDF: React.FC<PackingListPDFProps> = ({ certificate, logo, companyInfo }) => {
   
-  const companyInfo = getCompanyInfo(certificate.company);
   const isProben = certificate.company === 'proben';
+  const containerNos = certificate.containers?.map(c => c.containerNo).join(', ') || '';
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
@@ -22,7 +23,8 @@ const PackingListPDF: React.FC<PackingListPDFProps> = ({ certificate, logo }) =>
       return new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Number(num) || 0);
   }
   
-  const totalQuantity = (certificate.packages || []).reduce((sum, p) => sum + Number(p.quantity || 0), 0);
+  const allPackages = certificate.containers?.flatMap(c => c.packages) || [];
+  const totalQuantity = allPackages.reduce((sum, p) => sum + Number(p.quantity || 0), 0);
 
   const InfoBlock: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
     <div>
@@ -96,11 +98,11 @@ const PackingListPDF: React.FC<PackingListPDFProps> = ({ certificate, logo }) =>
                    <tr>
                        <td style={{width: '25%', verticalAlign: 'top', padding: '0 4px 4px 0'}}><InfoBlock label="Packing Date">{formatDate(certificate.certificateDate)}</InfoBlock></td>
                        <td style={{width: '25%', verticalAlign: 'top', padding: '0 4px 4px'}}><InfoBlock label="B/L No.">{certificate.billOfLadingNo}</InfoBlock></td>
-                       <td style={{width: '25%', verticalAlign: 'top', padding: '0 4px 4px'}}><InfoBlock label="Container No.">{certificate.containerNo}</InfoBlock></td>
+                       <td style={{width: '25%', verticalAlign: 'top', padding: '0 4px 4px'}}><InfoBlock label="Container No(s).">{containerNos}</InfoBlock></td>
                        <td style={{width: '25%', verticalAlign: 'top', padding: '0 0 4px 4px'}}><InfoBlock label="Shipping Line">{certificate.shippingLine}</InfoBlock></td>
                    </tr>
                     <tr>
-                       <td style={{width: '25%', verticalAlign: 'top', padding: '4px 4px 0 0'}}><InfoBlock label="Seal No.">{certificate.sealNo}</InfoBlock></td>
+                       <td style={{width: '25%', verticalAlign: 'top', padding: '4px 4px 0 0'}}><div style={{minHeight: '28px'}}></div></td>
                        <td style={{width: '25%', verticalAlign: 'top', padding: '4px 4px 0'}}><InfoBlock label="Destination">{certificate.destination}</InfoBlock></td>
                        <td style={{width: '25%', verticalAlign: 'top', padding: '4px 4px 0'}}><InfoBlock label="Product">{certificate.product}</InfoBlock></td>
                        <td style={{width: '25%', verticalAlign: 'top', padding: '4px 0 0 4px'}}><InfoBlock label="Contract No.">{certificate.contractNo}</InfoBlock></td>
@@ -111,41 +113,70 @@ const PackingListPDF: React.FC<PackingListPDFProps> = ({ certificate, logo }) =>
       </section>
 
       <main>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', tableLayout: 'fixed' }}>
-          <thead style={{ borderBottom: '1px solid #a1a1aa' }}>
-            <tr>
-              <th style={{ padding: '4px 2px', textAlign: 'left', fontWeight: '600', color: '#111827', width: '5%' }}>No.</th>
-              <th style={{ padding: '4px 2px', textAlign: 'left', fontWeight: '600', color: '#111827', width: '20%' }}>MARKS</th>
-              <th style={{ padding: '4px 6px', textAlign: 'left', fontWeight: '600', color: '#111827', width: '12%' }}>TYPE</th>
-              <th style={{ padding: '4px 6px', textAlign: 'right', fontWeight: '600', color: '#111827', width: '8%' }}>QUANTITY</th>
-              <th style={{ padding: '4px 2px', textAlign: 'right', fontWeight: '600', color: '#111827', width: '20%' }}>WEIGHT PER ITEM (KG)</th>
-              <th style={{ padding: '4px 2px', textAlign: 'right', fontWeight: '600', color: '#111827', width: '15%' }}>NET WEIGHT (KG)</th>
-              <th style={{ padding: '4px 2px', textAlign: 'right', fontWeight: '600', color: '#111827', width: '20%' }}>GROSS WEIGHT (KG)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(certificate.packages || []).map((pkg, index) => (
-              <tr key={pkg.id} style={{ pageBreakInside: 'avoid', borderBottom: '1px solid #e5e7eb' }}>
-                <td style={{ padding: '3px 2px', textAlign: 'left' }}>{index + 1}</td>
-                <td style={{ padding: '3px 2px', textAlign: 'left' }}>{pkg.marks}</td>
-                <td style={{ padding: '3px 6px', textAlign: 'left' }}>{pkg.type}</td>
-                <td style={{ padding: '3px 6px', textAlign: 'right' }}>{formatNumber(pkg.quantity, 0)}</td>
-                <td style={{ padding: '3px 2px', textAlign: 'right' }}>{formatNumber(pkg.unitWeight)}</td>
-                <td style={{ padding: '3px 2px', textAlign: 'right', fontWeight:'500' }}>{formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.unitWeight) || 0))}</td>
-                <td style={{ padding: '3px 2px', textAlign: 'right', fontWeight:'500' }}>{formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.grossUnitWeight) || 0))}</td>
-              </tr>
-            ))}
-          </tbody>
-           <tfoot style={{ borderTop: '2px solid #111827' }}>
-              <tr style={{ pageBreakInside: 'avoid' }}>
-                <td colSpan={3} style={{ paddingTop: '6px', paddingRight: '12px', textAlign: 'right', fontSize: '10px', fontWeight: '700' }}>TOTALS:</td>
-                <td style={{ paddingTop: '6px', paddingLeft: '6px', paddingRight: '6px', textAlign: 'right', fontSize: '10px', fontWeight: '700' }}>{formatNumber(totalQuantity, 0)}</td>
-                <td></td>
-                <td style={{ paddingTop: '6px', paddingLeft: '2px', paddingRight: '2px', textAlign: 'right', fontSize: '10px', fontWeight: '700' }}>{formatNumber(certificate.totalNetWeight)}</td>
-                <td style={{ paddingTop: '6px', paddingLeft: '2px', paddingRight: '2px', textAlign: 'right', fontSize: '10px', fontWeight: '700' }}>{formatNumber(certificate.totalGrossWeight)}</td>
-              </tr>
-          </tfoot>
-        </table>
+          {certificate.containers?.map((container) => {
+              const containerNetWeight = container.packages.reduce((sum, p) => sum + (Number(p.quantity) || 0) * (Number(p.unitWeight) || 0), 0);
+              const containerGrossWeight = container.packages.reduce((sum, p) => sum + (Number(p.quantity) || 0) * (Number(p.grossUnitWeight) || 0), 0);
+              const containerQuantity = container.packages.reduce((sum, p) => sum + Number(p.quantity || 0), 0);
+              return (
+                <div key={container.id} style={{ pageBreakInside: 'avoid', marginBottom: '16px' }}>
+                    <div style={{ padding: '4px 8px', backgroundColor: '#f1f5f9', borderRadius: '4px', border: '1px solid #e5e7eb', marginBottom: '4px' }}>
+                        <h3 style={{ fontSize: '11px', fontWeight: '700', color: '#1f2937', margin: 0 }}>
+                            CONTAINER: {container.containerNo}
+                            {container.sealNo && ` / SEAL: ${container.sealNo}`}
+                        </h3>
+                    </div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', tableLayout: 'fixed' }}>
+                      <thead style={{ borderBottom: '1px solid #a1a1aa' }}>
+                        <tr>
+                          <th style={{ padding: '4px 2px', textAlign: 'left', fontWeight: '600', color: '#111827', width: '5%' }}>No.</th>
+                          <th style={{ padding: '4px 2px', textAlign: 'left', fontWeight: '600', color: '#111827', width: '20%' }}>MARKS</th>
+                          <th style={{ padding: '4px 6px', textAlign: 'left', fontWeight: '600', color: '#111827', width: '12%' }}>TYPE</th>
+                          <th style={{ padding: '4px 6px', textAlign: 'right', fontWeight: '600', color: '#111827', width: '8%' }}>QUANTITY</th>
+                          <th style={{ padding: '4px 2px', textAlign: 'right', fontWeight: '600', color: '#111827', width: '20%' }}>WEIGHT PER ITEM (KG)</th>
+                          <th style={{ padding: '4px 2px', textAlign: 'right', fontWeight: '600', color: '#111827', width: '15%' }}>NET WEIGHT (KG)</th>
+                          <th style={{ padding: '4px 2px', textAlign: 'right', fontWeight: '600', color: '#111827', width: '20%' }}>GROSS WEIGHT (KG)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {container.packages.map((pkg, index) => (
+                          <tr key={pkg.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '3px 2px', textAlign: 'left' }}>{index + 1}</td>
+                            <td style={{ padding: '3px 2px', textAlign: 'left' }}>{pkg.marks}</td>
+                            <td style={{ padding: '3px 6px', textAlign: 'left' }}>{pkg.type}</td>
+                            <td style={{ padding: '3px 6px', textAlign: 'right' }}>{formatNumber(pkg.quantity, 0)}</td>
+                            <td style={{ padding: '3px 2px', textAlign: 'right' }}>{formatNumber(pkg.unitWeight)}</td>
+                            <td style={{ padding: '3px 2px', textAlign: 'right', fontWeight:'500' }}>{formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.unitWeight) || 0))}</td>
+                            <td style={{ padding: '3px 2px', textAlign: 'right', fontWeight:'500' }}>{formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.grossUnitWeight) || 0))}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                       <tfoot style={{ borderTop: '2px solid #6b7280' }}>
+                          <tr>
+                            <td colSpan={3} style={{ paddingTop: '4px', paddingRight: '12px', textAlign: 'right', fontSize: '10px', fontWeight: '700' }}>Subtotals:</td>
+                            <td style={{ paddingTop: '4px', paddingLeft: '6px', paddingRight: '6px', textAlign: 'right', fontSize: '10px', fontWeight: '700' }}>{formatNumber(containerQuantity, 0)}</td>
+                            <td></td>
+                            <td style={{ paddingTop: '4px', paddingLeft: '2px', paddingRight: '2px', textAlign: 'right', fontSize: '10px', fontWeight: '700' }}>{formatNumber(containerNetWeight)}</td>
+                            <td style={{ paddingTop: '4px', paddingLeft: '2px', paddingRight: '2px', textAlign: 'right', fontSize: '10px', fontWeight: '700' }}>{formatNumber(containerGrossWeight)}</td>
+                          </tr>
+                      </tfoot>
+                    </table>
+                </div>
+            )})}
+
+            <div style={{ marginTop: '16px', paddingTop: '8px', borderTop: '2px solid #111827', pageBreakInside: 'avoid' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', tableLayout: 'fixed' }}>
+                    <tbody>
+                        <tr>
+                            <td style={{ textAlign: 'right', fontWeight: '700', width: '45%', paddingRight: '12px' }}>TOTALS:</td>
+                            <td style={{ textAlign: 'right', fontWeight: '700', width: '8%', padding: '0 6px' }}>{formatNumber(totalQuantity, 0)}</td>
+                            <td style={{ width: '20%' }}></td>
+                            <td style={{ textAlign: 'right', fontWeight: '700', width: '15%', padding: '0 2px' }}>{formatNumber(certificate.totalNetWeight)}</td>
+                            <td style={{ textAlign: 'right', fontWeight: '700', width: '20%', padding: '0 2px' }}>{formatNumber(certificate.totalGrossWeight)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
          <footer style={{ marginTop: '96px', paddingTop: '12px', fontSize: '12px', pageBreakInside: 'avoid' }}>
             <div style={{ width: '288px' }}>
                 <div style={{ borderTop: '1px solid black', paddingTop: '8px' }}>

@@ -3,21 +3,21 @@ import type { Certificate } from '../types';
 import { ArrowLeftIcon, PrintIcon, DownloadIcon } from './Icons';
 import { printComponent } from '../utils/printUtils';
 import PackingListPDF from './PackingListPDF';
-import { getCompanyInfo } from '../utils/companyData';
+import type { CompanyInfo } from '../utils/companyData';
 
 interface PackingListViewProps {
   certificate: Certificate | null;
   onBack: () => void;
   logo: string | null;
+  companyInfo: CompanyInfo;
 }
 
-const PackingListView: React.FC<PackingListViewProps> = ({ certificate, onBack, logo }) => {
-  const companyInfo = getCompanyInfo(certificate?.company);
+const PackingListView: React.FC<PackingListViewProps> = ({ certificate, onBack, logo, companyInfo }) => {
 
   const handlePrint = () => {
     if (certificate) {
       printComponent(
-        <PackingListPDF certificate={certificate} logo={logo} />, 
+        <PackingListPDF certificate={certificate} logo={logo} companyInfo={companyInfo} />, 
         `PackingList-${certificate.certificateNumber || certificate.id}`,
         { saveOnly: false, orientation: 'portrait', showFooter: true, companyInfo }
       );
@@ -27,7 +27,7 @@ const PackingListView: React.FC<PackingListViewProps> = ({ certificate, onBack, 
   const handleSave = () => {
     if (certificate) {
       printComponent(
-        <PackingListPDF certificate={certificate} logo={logo} />, 
+        <PackingListPDF certificate={certificate} logo={logo} companyInfo={companyInfo} />, 
         `PackingList-${certificate.certificateNumber || certificate.id}`,
         { saveOnly: true, orientation: 'portrait', showFooter: true, companyInfo }
       );
@@ -38,12 +38,13 @@ const PackingListView: React.FC<PackingListViewProps> = ({ certificate, onBack, 
     return (
       <div className="p-8 text-center">
         <p>Lista de Empaque no encontrada.</p>
-        <button onClick={onBack} className="mt-4 text-indigo-600 hover:text-indigo-800">Volver a la lista</button>
+        <button onClick={onBack} className="mt-4 text-primary hover:text-primary/80">Volver a la lista</button>
       </div>
     );
   }
   
   const isProben = certificate.company === 'proben';
+  const containerNos = certificate.containers?.map(c => c.containerNo).join(', ') || '';
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
@@ -55,22 +56,23 @@ const PackingListView: React.FC<PackingListViewProps> = ({ certificate, onBack, 
       return new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Number(num) || 0);
   }
   
-  const totalQuantity = (certificate.packages || []).reduce((sum, p) => sum + Number(p.quantity || 0), 0);
+  const allPackages = certificate.containers?.flatMap(c => c.packages) || [];
+  const totalQuantity = allPackages.reduce((sum, p) => sum + Number(p.quantity || 0), 0);
 
   const InfoBlock: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
     <div className="min-w-0">
         <h3 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{label}</h3>
-        <div className="mt-1 text-[11px] leading-relaxed text-gray-900 whitespace-pre-wrap break-words">{children || '-'}</div>
+        <div className="mt-1 text-[11px] leading-relaxed text-gray-800 whitespace-pre-wrap break-words">{children || '-'}</div>
     </div>
   );
 
   return (
-    <div className="bg-gray-100 min-h-screen p-4 sm:p-6 lg:p-8 font-sans">
+    <div className="bg-background min-h-screen p-4 sm:p-6 lg:p-8 font-sans">
         <div className="max-w-5xl mx-auto mb-6 print:hidden">
             <div className="flex justify-between items-center">
                  <button
                     onClick={onBack}
-                    className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-300"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-foreground/80 bg-card px-4 py-2 rounded-lg shadow-sm border"
                 >
                     <ArrowLeftIcon className="w-5 h-5" />
                     Volver
@@ -85,7 +87,7 @@ const PackingListView: React.FC<PackingListViewProps> = ({ certificate, onBack, 
                     </button>
                     <button
                         onClick={handlePrint}
-                        className="inline-flex items-center gap-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg shadow-sm"
+                        className="inline-flex items-center gap-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg shadow-sm"
                     >
                         <PrintIcon className="w-5 h-5" />
                         Imprimir
@@ -111,7 +113,7 @@ const PackingListView: React.FC<PackingListViewProps> = ({ certificate, onBack, 
         }
       `}</style>
 
-      <div id="packing-list-paper" className="max-w-5xl mx-auto bg-white p-8 sm:p-12 shadow-lg border border-gray-200 rounded-lg">
+      <div id="packing-list-paper" className="max-w-5xl mx-auto bg-white text-gray-900 p-8 sm:p-12 shadow-lg border rounded-lg">
           <header className="flex justify-between items-center">
               <div className="flex flex-col items-center">
                   <div className={`flex items-center justify-center p-1 ${isProben ? 'h-20 w-40' : 'h-20 w-20'}`}>
@@ -159,9 +161,8 @@ const PackingListView: React.FC<PackingListViewProps> = ({ certificate, onBack, 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4">
                     <InfoBlock label="Packing Date">{formatDate(certificate.certificateDate)}</InfoBlock>
                     <InfoBlock label="Bill of Lading No.">{certificate.billOfLadingNo}</InfoBlock>
-                    <InfoBlock label="Container No.">{certificate.containerNo}</InfoBlock>
+                    <InfoBlock label="Container No(s).">{containerNos}</InfoBlock>
                     <InfoBlock label="Shipping Line">{certificate.shippingLine}</InfoBlock>
-                    <InfoBlock label="Seal No.">{certificate.sealNo}</InfoBlock>
                     <InfoBlock label="Destination">{certificate.destination}</InfoBlock>
                     <InfoBlock label="Product">{certificate.product}</InfoBlock>
                     <InfoBlock label="Contract No.">{certificate.contractNo}</InfoBlock>
@@ -170,47 +171,63 @@ const PackingListView: React.FC<PackingListViewProps> = ({ certificate, onBack, 
           </section>
 
           <main>
-            <div className="flow-root">
-              <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-                <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                  <table className="min-w-full table-fixed">
-                    <thead className="border-b border-gray-300">
-                      <tr>
-                        <th scope="col" className="py-2 pl-4 pr-3 text-left text-xs font-semibold text-gray-900 sm:pl-0 w-[5%]">No.</th>
-                        <th scope="col" className="px-3 py-2 text-left text-xs font-semibold text-gray-900 w-[20%]">MARKS</th>
-                        <th scope="col" className="px-2 py-2 text-left text-xs font-semibold text-gray-900 w-[12%]">TYPE</th>
-                        <th scope="col" className="px-2 py-2 text-right text-xs font-semibold text-gray-900 w-[8%]">QUANTITY</th>
-                        <th scope="col" className="px-3 py-2 text-right text-xs font-semibold text-gray-900 w-[20%] whitespace-nowrap">WEIGHT PER ITEM (KG)</th>
-                        <th scope="col" className="py-2 pl-3 pr-4 text-right text-xs font-semibold text-gray-900 sm:pr-0 w-[15%]">NET WEIGHT (KG)</th>
-                        <th scope="col" className="py-2 pl-3 pr-4 text-right text-xs font-semibold text-gray-900 sm:pr-0 w-[20%]">GROSS WEIGHT (KG)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {(certificate.packages || []).map((pkg, index) => (
-                        <tr key={pkg.id}>
-                          <td className="whitespace-nowrap py-2 pl-4 pr-3 text-xs text-gray-500 sm:pl-0">{index + 1}</td>
-                          <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500">{pkg.marks}</td>
-                          <td className="whitespace-nowrap px-2 py-2 text-xs text-gray-500">{pkg.type}</td>
-                          <td className="whitespace-nowrap px-2 py-2 text-xs text-gray-500 text-right">{pkg.quantity}</td>
-                          <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500 text-right">{formatNumber(pkg.unitWeight)}</td>
-                          <td className="whitespace-nowrap py-2 pl-3 pr-4 text-xs font-medium text-gray-900 sm:pr-0 text-right">{formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.unitWeight) || 0))}</td>
-                          <td className="whitespace-nowrap py-2 pl-3 pr-4 text-xs font-medium text-gray-900 sm:pr-0 text-right">{formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.grossUnitWeight) || 0))}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot className="border-t-2 border-gray-900">
+              {certificate.containers?.map((container, containerIndex) => (
+                  <div key={container.id} className="mb-8 last:mb-0">
+                      <div className="p-2 bg-slate-100 rounded-md border mb-2">
+                          <h3 className="text-sm font-bold text-gray-800">
+                              CONTAINER: {container.containerNo}
+                              {container.sealNo && ` / SEAL: ${container.sealNo}`}
+                          </h3>
+                      </div>
+                      <div className="flow-root">
+                        <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                          <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+                            <table className="min-w-full table-fixed">
+                              <thead className="border-b border-gray-300">
+                                <tr>
+                                  <th scope="col" className="py-2 pl-4 pr-3 text-left text-xs font-semibold text-gray-900 sm:pl-0 w-[5%]">No.</th>
+                                  <th scope="col" className="px-3 py-2 text-left text-xs font-semibold text-gray-900 w-[20%]">MARKS</th>
+                                  <th scope="col" className="px-2 py-2 text-left text-xs font-semibold text-gray-900 w-[12%]">TYPE</th>
+                                  <th scope="col" className="px-2 py-2 text-right text-xs font-semibold text-gray-900 w-[8%]">QUANTITY</th>
+                                  <th scope="col" className="px-3 py-2 text-right text-xs font-semibold text-gray-900 w-[20%] whitespace-nowrap">WEIGHT PER ITEM (KG)</th>
+                                  <th scope="col" className="py-2 pl-3 pr-4 text-right text-xs font-semibold text-gray-900 sm:pr-0 w-[15%]">NET WEIGHT (KG)</th>
+                                  <th scope="col" className="py-2 pl-3 pr-4 text-right text-xs font-semibold text-gray-900 sm:pr-0 w-[20%]">GROSS WEIGHT (KG)</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200">
+                                {container.packages.map((pkg, index) => (
+                                  <tr key={pkg.id}>
+                                    <td className="whitespace-nowrap py-2 pl-4 pr-3 text-xs text-gray-500 sm:pl-0">{index + 1}</td>
+                                    <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500">{pkg.marks}</td>
+                                    <td className="whitespace-nowrap px-2 py-2 text-xs text-gray-500">{pkg.type}</td>
+                                    <td className="whitespace-nowrap px-2 py-2 text-xs text-gray-500 text-right">{pkg.quantity}</td>
+                                    <td className="whitespace-nowrap px-3 py-2 text-xs text-gray-500 text-right">{formatNumber(pkg.unitWeight)}</td>
+                                    <td className="whitespace-nowrap py-2 pl-3 pr-4 text-xs font-medium text-gray-900 sm:pr-0 text-right">{formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.unitWeight) || 0))}</td>
+                                    <td className="whitespace-nowrap py-2 pl-3 pr-4 text-xs font-medium text-gray-900 sm:pr-0 text-right">{formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.grossUnitWeight) || 0))}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                  </div>
+              ))}
+              
+              <div className="mt-6 pt-4 border-t-2 border-gray-900 flex justify-end">
+                <table className="w-full max-w-lg">
+                    <tbody>
                         <tr>
-                            <td colSpan={3} className="py-3 pr-3 text-right text-sm font-bold text-gray-900">TOTALS:</td>
-                            <td className="whitespace-nowrap px-2 py-3 text-right text-sm font-bold text-gray-900">{formatNumber(totalQuantity, 0)}</td>
-                            <td></td>
-                            <td className="whitespace-nowrap py-3 pl-3 pr-4 text-right text-sm font-bold text-gray-900 sm:pr-0">{formatNumber(certificate.totalNetWeight)}</td>
-                            <td className="whitespace-nowrap py-3 pl-3 pr-4 text-right text-sm font-bold text-gray-900 sm:pr-0">{formatNumber(certificate.totalGrossWeight)}</td>
+                            <td className="py-1 pr-3 text-right text-sm font-bold text-gray-900">TOTALS:</td>
+                            <td className="py-1 px-2 text-right text-sm font-bold text-gray-900 w-24">{formatNumber(totalQuantity, 0)}</td>
+                            <td className="w-48"></td>
+                            <td className="py-1 pl-3 pr-4 text-right text-sm font-bold text-gray-900 sm:pr-0 w-28">{formatNumber(certificate.totalNetWeight)}</td>
+                            <td className="py-1 pl-3 pr-4 text-right text-sm font-bold text-gray-900 sm:pr-0 w-28">{formatNumber(certificate.totalGrossWeight)}</td>
                         </tr>
-                    </tfoot>
-                  </table>
-                </div>
+                    </tbody>
+                </table>
               </div>
-            </div>
+
              <footer className="mt-24 pt-6 text-sm">
                 <div className="w-72">
                     <div className="border-t border-black pt-2">

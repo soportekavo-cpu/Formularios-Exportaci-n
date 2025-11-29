@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import type { Certificate, PackageItem, CertificateType } from '../types';
+import type { Certificate, PackageItem, CertificateType, Container } from '../types';
 import { ArrowLeftIcon, PlusIcon, TrashIcon, DocumentDuplicateIcon } from './Icons';
-import { companyData } from '../utils/companyData';
 
 interface ShipmentFormProps {
   onSubmit: (data: Omit<Certificate, 'id' | 'type' | 'certificateNumber'>, types: CertificateType[]) => void;
@@ -9,9 +8,9 @@ interface ShipmentFormProps {
   initialShipmentData?: Partial<Certificate> | null;
 }
 
-const inputStyles = "block w-full text-base text-gray-900 bg-gray-50 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 hover:bg-white focus:bg-white transition-colors duration-200 px-4 py-3";
+const inputStyles = "block w-full text-base bg-background rounded-lg border-input shadow-sm focus:border-primary focus:ring-primary transition-colors duration-200 px-4 py-3 ring-1 ring-inset focus:ring-2 focus:ring-inset";
 const textareaStyles = `${inputStyles} min-h-[110px]`;
-const readOnlyInputStyles = `${inputStyles} bg-gray-200 cursor-not-allowed`;
+const readOnlyInputStyles = `${inputStyles} bg-muted cursor-not-allowed`;
 
 const docTypes: { key: CertificateType; label: string; description: string }[] = [
     { key: 'weight', label: 'Certificado de Peso', description: 'Genera un certificado formal de peso.' },
@@ -29,25 +28,43 @@ const ShipmentForm: React.FC<ShipmentFormProps> = ({ onSubmit, onCancel, initial
 
   useEffect(() => {
     const defaultPackage: PackageItem = { id: new Date().toISOString(), type: 'BAGS', quantity: '', unitWeight: '', grossUnitWeight: '', marks: '', quality: '' };
-    const defaultData = {
+    const defaultContainer: Container = { id: new Date().toISOString(), containerNo: '', sealNo: '', packages: [defaultPackage] };
+    
+    const defaultData: Partial<Certificate> = {
       product: 'GREEN COFFEE, CROP 2024/2025',
-      shipper: companyData.dizano.shipperText,
       consignee: `Jacobs Douwe Egberts C&T Utrecht\nVleutensevaart 35 Utrecht\n3532 AD, The Netherlands`,
       notify: `Jacobs Douwe Egberts C&T Utrecht\nVleutensevaart 35 Utrecht\n3532 AD, The Netherlands`,
       exporterName: 'Yony Roquel',
-      packages: [defaultPackage],
+      containers: [defaultContainer],
       certificateDate: new Date().toISOString().split('T')[0],
     };
-
-    setFormData({ ...defaultData, ...initialShipmentData });
+    
+    // If there's initial data, merge it, ensuring containers and packages have unique IDs.
+    if (initialShipmentData) {
+        const mergedData = { ...defaultData, ...initialShipmentData };
+        if (initialShipmentData.containers) {
+            mergedData.containers = initialShipmentData.containers.map(c => ({
+                ...c,
+                id: c.id || new Date().toISOString() + Math.random(),
+                packages: (c.packages || [defaultPackage]).map(p => ({
+                    ...p,
+                    id: p.id || new Date().toISOString() + Math.random()
+                }))
+            }));
+        }
+        setFormData(mergedData);
+    } else {
+        setFormData(defaultData);
+    }
 
   }, [initialShipmentData]);
 
   useEffect(() => {
-    const totalNet = formData.packages?.reduce((sum, pkg) => sum + ((Number(pkg.quantity) || 0) * (Number(pkg.unitWeight) || 0)), 0) || 0;
-    const totalGross = formData.packages?.reduce((sum, pkg) => sum + ((Number(pkg.quantity) || 0) * (Number(pkg.grossUnitWeight) || 0)), 0) || 0;
+    const allPackages = formData.containers?.flatMap(c => c.packages) || [];
+    const totalNet = allPackages.reduce((sum, pkg) => sum + ((Number(pkg.quantity) || 0) * (Number(pkg.unitWeight) || 0)), 0);
+    const totalGross = allPackages.reduce((sum, pkg) => sum + ((Number(pkg.quantity) || 0) * (Number(pkg.grossUnitWeight) || 0)), 0);
     setFormData(prev => ({ ...prev, totalNetWeight: totalNet, totalGrossWeight: totalGross }));
-  }, [formData.packages]);
+  }, [formData.containers]);
 
   const handleDocSelectionChange = (key: string) => {
     setSelectedDocs(prev => ({ ...prev, [key]: !prev[key] }));
@@ -58,33 +75,82 @@ const ShipmentForm: React.FC<ShipmentFormProps> = ({ onSubmit, onCancel, initial
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handlePackageChange = (id: string, field: keyof PackageItem, value: string | number) => {
+  const handleContainerChange = (id: string, field: keyof Container, value: string) => {
+      setFormData(prev => ({
+          ...prev,
+          containers: prev.containers?.map(c => c.id === id ? { ...c, [field]: value } : c)
+      }));
+  };
+
+  const addContainer = () => {
+      const newPackage: PackageItem = { id: new Date().toISOString(), type: 'BAGS', quantity: '', unitWeight: '', grossUnitWeight: '', marks: '', quality: '' };
+      const newContainer: Container = { id: new Date().toISOString(), containerNo: '', sealNo: '', packages: [newPackage] };
+      setFormData(prev => ({ ...prev, containers: [...(prev.containers || []), newContainer] }));
+  };
+
+  const removeContainer = (id: string) => {
+      if (formData.containers && formData.containers.length <= 1) {
+          alert("Debe haber al menos un contenedor.");
+          return;
+      }
+      setFormData(prev => ({ ...prev, containers: prev.containers?.filter(c => c.id !== id) }));
+  };
+  
+  const handlePackageChange = (containerId: string, packageId: string, field: keyof PackageItem, value: string | number) => {
     setFormData(prev => ({
       ...prev,
-      packages: prev.packages?.map(pkg => pkg.id === id ? { ...pkg, [field]: value } : pkg),
+      containers: prev.containers?.map(c => 
+        c.id === containerId 
+        ? { ...c, packages: c.packages.map(p => p.id === packageId ? { ...p, [field]: value } : p) }
+        : c
+      ),
     }));
   };
 
-  const addPackage = () => {
+  const addPackage = (containerId: string) => {
     const newPackage: PackageItem = { id: new Date().toISOString(), type: 'BAGS', quantity: '', unitWeight: '', grossUnitWeight: '', marks: '', quality: '' };
-    setFormData(prev => ({ ...prev, packages: [...(prev.packages || []), newPackage] }));
+    setFormData(prev => ({
+        ...prev,
+        containers: prev.containers?.map(c => 
+            c.id === containerId ? { ...c, packages: [...c.packages, newPackage] } : c
+        )
+    }));
   };
   
-  const removePackage = (id: string) => {
-      setFormData(prev => ({...prev, packages: prev.packages?.filter(pkg => pkg.id !== id) }));
+  const removePackage = (containerId: string, packageId: string) => {
+      setFormData(prev => ({
+          ...prev,
+          containers: prev.containers?.map(c => {
+              if (c.id === containerId) {
+                  // Prevent removing the last package in a container
+                  if (c.packages.length <= 1) {
+                      alert("Cada contenedor debe tener al menos un item de carga.");
+                      return c;
+                  }
+                  return { ...c, packages: c.packages.filter(p => p.id !== packageId) };
+              }
+              return c;
+          })
+      }));
   };
   
-  const duplicatePackage = (id: string) => {
-    const originalPackage = formData.packages?.find(p => p.id === id);
-    if (originalPackage) {
-        const newPackage = { ...originalPackage, id: new Date().toISOString() + Math.random(), marks: '' };
-        const index = formData.packages?.findIndex(p => p.id === id) ?? -1;
-        if(index > -1) {
-            const newPackages = [...formData.packages!];
-            newPackages.splice(index + 1, 0, newPackage);
-            setFormData(prev => ({...prev, packages: newPackages}));
-        }
-    }
+  const duplicatePackage = (containerId: string, packageId: string) => {
+    setFormData(prev => {
+        const newContainers = prev.containers?.map(c => {
+            if (c.id === containerId) {
+                const packageIndex = c.packages.findIndex(p => p.id === packageId);
+                if (packageIndex !== -1) {
+                    const originalPackage = c.packages[packageIndex];
+                    const newPackage = { ...originalPackage, id: new Date().toISOString() + Math.random(), marks: '' };
+                    const newPackages = [...c.packages];
+                    newPackages.splice(packageIndex + 1, 0, newPackage);
+                    return { ...c, packages: newPackages };
+                }
+            }
+            return c;
+        });
+        return { ...prev, containers: newContainers };
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -107,26 +173,28 @@ const ShipmentForm: React.FC<ShipmentFormProps> = ({ onSubmit, onCancel, initial
   const isWeight = selectedDocs.weight;
 
   const formatNumber = (num: number, digits = 2) => new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(num);
-  const totalPackages = formData.packages?.reduce((sum, pkg) => sum + (Number(pkg.quantity) || 0), 0) || 0;
+  
+  const allPackages = formData.containers?.flatMap(c => c.packages) || [];
+  const totalPackages = allPackages.reduce((sum, pkg) => sum + (Number(pkg.quantity) || 0), 0);
   
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div>
       <div className="mb-8">
-        <button onClick={onCancel} className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+        <button onClick={onCancel} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
           <ArrowLeftIcon className="w-5 h-5" />
           Volver a la lista
         </button>
       </div>
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Nuevo Embarque</h1>
-        <p className="text-base text-gray-600 mb-10">
+        <h1 className="text-3xl font-bold text-foreground mb-2">Nuevo Embarque</h1>
+        <p className="text-base text-muted-foreground mb-10">
           {initialShipmentData ? 'Datos extraídos con IA. Revisa y completa la información.' : 'Completa la información para generar los documentos del embarque.'}
         </p>
         
         <form onSubmit={handleSubmit} className="space-y-10">
             {/* Document Selection */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">Documentos a Generar</h2>
+            <div className="bg-card p-6 rounded-lg shadow-sm border">
+                <h2 className="text-xl font-semibold text-card-foreground border-b pb-4 mb-6">Documentos a Generar</h2>
                 <fieldset className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <legend className="sr-only">Tipos de Documento</legend>
                     {docTypes.map(doc => (
@@ -138,11 +206,11 @@ const ShipmentForm: React.FC<ShipmentFormProps> = ({ onSubmit, onCancel, initial
                             type="checkbox"
                             checked={selectedDocs[doc.key]}
                             onChange={() => handleDocSelectionChange(doc.key)}
-                            className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                            className="h-5 w-5 rounded border-input text-primary focus:ring-primary"
                             />
                         </div>
                         <div className="ml-3 text-sm leading-6">
-                            <label htmlFor={doc.key} className="font-medium text-gray-900">{doc.label}</label>
+                            <label htmlFor={doc.key} className="font-medium text-foreground">{doc.label}</label>
                         </div>
                         </div>
                     ))}
@@ -151,26 +219,20 @@ const ShipmentForm: React.FC<ShipmentFormProps> = ({ onSubmit, onCancel, initial
 
 
             {/* Parties Info */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">Información de las Partes</h2>
+            <div className="bg-card p-6 rounded-lg shadow-sm border">
+                <h2 className="text-xl font-semibold text-card-foreground border-b pb-4 mb-6">Información de las Partes</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                    {(isWeight || isQuality) && (
-                        <div>
-                            <label htmlFor="shipper" className="block text-sm font-medium text-gray-800 mb-2">Seller</label>
-                            <textarea id="shipper" name="shipper" value={formData.shipper || ''} onChange={handleChange} required className={textareaStyles}></textarea>
-                        </div>
-                    )}
-                    <div className={(isWeight || isQuality) ? '' : 'md:col-span-2'}>
-                        <label htmlFor="consignee" className="block text-sm font-medium text-gray-800 mb-2">Consignee</label>
+                    <div className="md:col-span-1">
+                        <label htmlFor="consignee" className="block text-sm font-medium text-card-foreground mb-2">Consignee</label>
                         <textarea id="consignee" name="consignee" value={formData.consignee || ''} onChange={handleChange} required className={textareaStyles}></textarea>
                     </div>
                     <div>
-                        <label htmlFor="notify" className="block text-sm font-medium text-gray-800 mb-2">Notify</label>
+                        <label htmlFor="notify" className="block text-sm font-medium text-card-foreground mb-2">Notify</label>
                         <textarea id="notify" name="notify" value={formData.notify || ''} onChange={handleChange} required className={textareaStyles}></textarea>
                     </div>
                      {isPacking && (
-                        <div>
-                            <label htmlFor="packingPlace" className="block text-sm font-medium text-gray-800 mb-2">Lugar de Empaque</label>
+                        <div className="md:col-span-2">
+                            <label htmlFor="packingPlace" className="block text-sm font-medium text-card-foreground mb-2">Lugar de Empaque</label>
                             <textarea id="packingPlace" name="packingPlace" value={formData.packingPlace || ''} onChange={handleChange} className={textareaStyles} />
                         </div>
                     )}
@@ -178,125 +240,140 @@ const ShipmentForm: React.FC<ShipmentFormProps> = ({ onSubmit, onCancel, initial
             </div>
 
             {/* Shipment Info */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">Detalles del Envío</h2>
+            <div className="bg-card p-6 rounded-lg shadow-sm border">
+              <h2 className="text-xl font-semibold text-card-foreground border-b pb-4 mb-6">Detalles del Envío</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-8">
                   <div>
-                      <label htmlFor="certificateDate" className="block text-sm font-medium text-gray-800 mb-2">{isPacking && !isWeight && !isQuality ? 'Packing Date' : 'Fecha del Documento'}</label>
+                      <label htmlFor="certificateDate" className="block text-sm font-medium text-card-foreground mb-2">{isPacking && !isWeight && !isQuality ? 'Packing Date' : 'Fecha del Documento'}</label>
                       <input type="date" id="certificateDate" name="certificateDate" value={formData.certificateDate || ''} onChange={handleChange} required className={inputStyles} />
                   </div>
                   {(isWeight || isQuality) && (
                       <div>
-                          <label htmlFor="shipmentDate" className="block text-sm font-medium text-gray-800 mb-2">Fecha de Embarque</label>
+                          <label htmlFor="shipmentDate" className="block text-sm font-medium text-card-foreground mb-2">Fecha de Embarque</label>
                           <input type="date" id="shipmentDate" name="shipmentDate" value={formData.shipmentDate || ''} onChange={handleChange} required className={inputStyles} />
                       </div>
                   )}
                   <div>
-                      <label htmlFor="product" className="block text-sm font-medium text-gray-800 mb-2">Producto</label>
+                      <label htmlFor="product" className="block text-sm font-medium text-card-foreground mb-2">Producto</label>
                       <input type="text" id="product" name="product" value={formData.product || ''} onChange={handleChange} required className={inputStyles} />
                   </div>
                   <div>
-                      <label htmlFor="containerNo" className="block text-sm font-medium text-gray-800 mb-2">Nº de Contenedor</label>
-                      <input type="text" id="containerNo" name="containerNo" value={formData.containerNo || ''} onChange={handleChange} required className={inputStyles} />
+                      <label htmlFor="contractNo" className="block text-sm font-medium text-card-foreground mb-2">Contrato</label>
+                      <input type="text" id="contractNo" name="contractNo" value={formData.contractNo || ''} onChange={handleChange} className={inputStyles} />
                   </div>
-                   {isPacking && (
-                      <>
-                          <div>
-                              <label htmlFor="sealNo" className="block text-sm font-medium text-gray-800 mb-2">Nº de Sello</label>
-                              <input type="text" id="sealNo" name="sealNo" value={formData.sealNo || ''} onChange={handleChange} className={inputStyles} />
-                          </div>
-                           <div>
-                              <label htmlFor="contractNo" className="block text-sm font-medium text-gray-800 mb-2">Contrato</label>
-                              <input type="text" id="contractNo" name="contractNo" value={formData.contractNo || ''} onChange={handleChange} className={inputStyles} />
-                          </div>
-                      </>
-                  )}
                   <div>
-                      <label htmlFor="billOfLadingNo" className="block text-sm font-medium text-gray-800 mb-2">Nº de Bill of Lading</label>
+                      <label htmlFor="billOfLadingNo" className="block text-sm font-medium text-card-foreground mb-2">Nº de Bill of Lading</label>
                       <input type="text" id="billOfLadingNo" name="billOfLadingNo" value={formData.billOfLadingNo || ''} onChange={handleChange} required className={inputStyles} />
                   </div>
                   <div>
-                      <label htmlFor="shippingLine" className="block text-sm font-medium text-gray-800 mb-2">Línea Naviera</label>
+                      <label htmlFor="shippingLine" className="block text-sm font-medium text-card-foreground mb-2">Línea Naviera</label>
                       <input type="text" id="shippingLine" name="shippingLine" value={formData.shippingLine || ''} onChange={handleChange} required className={inputStyles} />
                   </div>
                   <div>
-                      <label htmlFor="destination" className="block text-sm font-medium text-gray-800 mb-2">Destino</label>
+                      <label htmlFor="destination" className="block text-sm font-medium text-card-foreground mb-2">Destino</label>
                       <input type="text" id="destination" name="destination" value={formData.destination || ''} onChange={handleChange} required className={inputStyles} />
                   </div>
               </div>
             </div>
 
             {(isWeight || isQuality) && (
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">Información del Exportador</h2>
+                <div className="bg-card p-6 rounded-lg shadow-sm border">
+                <h2 className="text-xl font-semibold text-card-foreground border-b pb-4 mb-6">Información del Exportador</h2>
                 <div>
-                    <label htmlFor="exporterName" className="block text-sm font-medium text-gray-800 mb-2">Nombre para la Firma</label>
+                    <label htmlFor="exporterName" className="block text-sm font-medium text-card-foreground mb-2">Nombre para la Firma</label>
                     <input type="text" id="exporterName" name="exporterName" value={formData.exporterName || ''} onChange={handleChange} required className={inputStyles} placeholder="Ej: Yony Roquel"/>
                 </div>
                 </div>
             )}
 
-            {/* Packages Section */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">Items de Carga</h2>
-                <div className="space-y-4">
-                    {formData.packages?.map((pkg, index) => (
-                        <div key={pkg.id} className="p-4 bg-slate-50 rounded-lg border space-y-4">
-                            <div className="grid grid-cols-12 gap-x-6 gap-y-4 items-end">
-                                <div className="col-span-12 sm:col-span-6 md:col-span-3">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Tipo #{index + 1}</label>
-                                    <input type="text" value={pkg.type} onChange={e => handlePackageChange(pkg.id, 'type', e.target.value.toUpperCase())} placeholder="EJ: BAGS" className={inputStyles}/>
-                                </div>
-                                <div className="col-span-6 sm:col-span-3 md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Cantidad</label>
-                                    <input type="number" value={pkg.quantity} onChange={e => handlePackageChange(pkg.id, 'quantity', e.target.value)} className={inputStyles}/>
-                                </div>
-                                <div className="col-span-6 sm:col-span-3 md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">P. Neto Unit. (kg)</label>
-                                    <input type="number" step="0.01" value={pkg.unitWeight} onChange={e => handlePackageChange(pkg.id, 'unitWeight', e.target.value)} className={inputStyles}/>
-                                </div>
-                                {isPacking && (
-                                    <div className="col-span-6 sm:col-span-4 md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">P. Bruto Unit. (kg)</label>
-                                        <input type="number" step="0.01" value={pkg.grossUnitWeight} onChange={e => handlePackageChange(pkg.id, 'grossUnitWeight', e.target.value)} className={inputStyles}/>
-                                    </div>
-                                )}
-                                <div className="col-span-12 sm:col-span-8 md:col-span-3">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Marcas</label>
-                                    <input type="text" value={pkg.marks} onChange={e => handlePackageChange(pkg.id, 'marks', e.target.value)} className={inputStyles}/>
-                                </div>
-                                <div className="col-span-12 sm:col-span-4 md:col-span-2 flex items-end justify-end space-x-2">
-                                    <button type="button" onClick={() => duplicatePackage(pkg.id)} className="text-indigo-600 hover:text-indigo-800 p-2 rounded-md hover:bg-indigo-50" title="Duplicar Item"><DocumentDuplicateIcon/></button>
-                                    <button type="button" onClick={() => removePackage(pkg.id)} className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50" title="Eliminar Item"><TrashIcon/></button>
-                                </div>
-                                {isQuality && (
-                                    <div className="col-span-12">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Calidad</label>
-                                        <input type="text" value={pkg.quality || ''} onChange={e => handlePackageChange(pkg.id, 'quality', e.target.value)} placeholder="Ej: SHB EP..." className={inputStyles}/>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                <div className="mt-4 flex justify-end">
-                    <button type="button" onClick={addPackage} className="inline-flex items-center gap-x-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
-                        <PlusIcon className="w-5 h-5" />
-                        Agregar Item
-                    </button>
-                </div>
-                <div className="flex justify-end pt-6 mt-6 border-t">
-                    <div className="w-full max-w-sm space-y-3">
-                        <div className="flex justify-between items-center"><label className="text-sm font-medium text-gray-700">Total Bultos</label><p className={`${readOnlyInputStyles} w-48 text-lg font-bold text-right`}>{formatNumber(totalPackages, 0)}</p></div>
-                        {isPacking && (<div className="flex justify-between items-center"><label className="text-sm font-medium text-gray-700">Peso Bruto Total (kgs)</label><p className={`${readOnlyInputStyles} w-48 text-lg font-bold text-right`}>{formatNumber(formData.totalGrossWeight || 0)}</p></div>)}
-                        <div className="flex justify-between items-center"><label className="text-sm font-bold text-gray-900">Peso Neto Total (kgs)</label><p className={`${readOnlyInputStyles} w-48 text-xl font-bold text-right`}>{formatNumber(formData.totalNetWeight || 0)}</p></div>
-                    </div>
+            {/* Containers Section */}
+            <div className="space-y-8">
+              {formData.containers?.map((container, containerIndex) => (
+                  <div key={container.id} className="bg-card p-6 rounded-lg shadow-sm border">
+                      <div className="flex justify-between items-center border-b pb-4 mb-6">
+                        <h2 className="text-xl font-semibold text-card-foreground">Contenedor #{containerIndex + 1}</h2>
+                        <button type="button" onClick={() => removeContainer(container.id)} className="text-destructive hover:text-destructive/80 text-sm font-medium">Eliminar Contenedor</button>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 mb-8">
+                          <div>
+                              <label htmlFor={`containerNo-${container.id}`} className="block text-sm font-medium text-card-foreground mb-2">Nº de Contenedor</label>
+                              <input type="text" id={`containerNo-${container.id}`} value={container.containerNo} onChange={e => handleContainerChange(container.id, 'containerNo', e.target.value)} required className={inputStyles} />
+                          </div>
+                          <div>
+                              <label htmlFor={`sealNo-${container.id}`} className="block text-sm font-medium text-card-foreground mb-2">Nº de Sello (Marchamo)</label>
+                              <input type="text" id={`sealNo-${container.id}`} value={container.sealNo || ''} onChange={e => handleContainerChange(container.id, 'sealNo', e.target.value)} className={inputStyles} />
+                          </div>
+                      </div>
+
+                      <h3 className="text-lg font-semibold text-card-foreground mb-4">Items de Carga de este Contenedor</h3>
+                      <div className="space-y-4">
+                          {container.packages.map((pkg, pkgIndex) => (
+                              <div key={pkg.id} className="p-4 bg-muted/30 rounded-lg border space-y-4">
+                                  <div className="grid grid-cols-12 gap-x-6 gap-y-4 items-end">
+                                      <div className="col-span-12 sm:col-span-6 md:col-span-3">
+                                          <label className="block text-sm font-medium text-muted-foreground mb-2">Tipo #{pkgIndex + 1}</label>
+                                          <input type="text" value={pkg.type} onChange={e => handlePackageChange(container.id, pkg.id, 'type', e.target.value.toUpperCase())} placeholder="EJ: BAGS" className={inputStyles}/>
+                                      </div>
+                                      <div className="col-span-6 sm:col-span-3 md:col-span-2">
+                                          <label className="block text-sm font-medium text-muted-foreground mb-2">Cantidad</label>
+                                          <input type="number" value={pkg.quantity} onChange={e => handlePackageChange(container.id, pkg.id, 'quantity', e.target.value)} className={inputStyles}/>
+                                      </div>
+                                      <div className="col-span-6 sm:col-span-3 md:col-span-2">
+                                          <label className="block text-sm font-medium text-muted-foreground mb-2">P. Neto Unit. (kg)</label>
+                                          <input type="number" step="0.01" value={pkg.unitWeight} onChange={e => handlePackageChange(container.id, pkg.id, 'unitWeight', e.target.value)} className={inputStyles}/>
+                                      </div>
+                                      {isPacking && (
+                                          <div className="col-span-6 sm:col-span-4 md:col-span-2">
+                                              <label className="block text-sm font-medium text-muted-foreground mb-2">P. Bruto Unit. (kg)</label>
+                                              <input type="number" step="0.01" value={pkg.grossUnitWeight} onChange={e => handlePackageChange(container.id, pkg.id, 'grossUnitWeight', e.target.value)} className={inputStyles}/>
+                                          </div>
+                                      )}
+                                      <div className="col-span-12 sm:col-span-8 md:col-span-3">
+                                          <label className="block text-sm font-medium text-muted-foreground mb-2">Marcas</label>
+                                          <input type="text" value={pkg.marks} onChange={e => handlePackageChange(container.id, pkg.id, 'marks', e.target.value)} className={inputStyles}/>
+                                      </div>
+                                      <div className="col-span-12 sm:col-span-4 md:col-span-2 flex items-end justify-end space-x-2">
+                                          <button type="button" onClick={() => duplicatePackage(container.id, pkg.id)} className="text-primary hover:text-primary/80 p-2 rounded-md hover:bg-accent" title="Duplicar Item"><DocumentDuplicateIcon/></button>
+                                          <button type="button" onClick={() => removePackage(container.id, pkg.id)} className="text-destructive hover:text-destructive/80 p-2 rounded-md hover:bg-destructive/10" title="Eliminar Item"><TrashIcon/></button>
+                                      </div>
+                                      {isQuality && (
+                                          <div className="col-span-12">
+                                              <label className="block text-sm font-medium text-muted-foreground mb-2">Calidad</label>
+                                              <input type="text" value={pkg.quality || ''} onChange={e => handlePackageChange(container.id, pkg.id, 'quality', e.target.value)} placeholder="Ej: SHB EP..." className={inputStyles}/>
+                                          </div>
+                                      )}
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                      <div className="mt-4 flex justify-end">
+                        <button type="button" onClick={() => addPackage(container.id)} className="inline-flex items-center gap-x-2 rounded-md bg-secondary px-3 py-2 text-sm font-semibold text-secondary-foreground shadow-sm hover:bg-secondary/80">
+                            <PlusIcon className="w-5 h-5" />
+                            Agregar Item al Contenedor
+                        </button>
+                      </div>
+                  </div>
+              ))}
+            </div>
+             <div className="flex justify-end">
+                <button type="button" onClick={addContainer} className="inline-flex items-center gap-x-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
+                    <PlusIcon className="w-5 h-5" />
+                    Agregar Contenedor
+                </button>
+            </div>
+            
+             <div className="flex justify-end pt-6 mt-6 border-t">
+                <div className="w-full max-w-sm space-y-3">
+                    <div className="flex justify-between items-center"><label className="text-sm font-medium text-muted-foreground">Total Bultos (Embarque)</label><p className={`${readOnlyInputStyles} w-48 text-lg font-bold text-right`}>{formatNumber(totalPackages, 0)}</p></div>
+                    {isPacking && (<div className="flex justify-between items-center"><label className="text-sm font-medium text-muted-foreground">Peso Bruto Total (Embarque)</label><p className={`${readOnlyInputStyles} w-48 text-lg font-bold text-right`}>{formatNumber(formData.totalGrossWeight || 0)}</p></div>)}
+                    <div className="flex justify-between items-center"><label className="text-sm font-bold text-foreground">Peso Neto Total (Embarque)</label><p className={`${readOnlyInputStyles} w-48 text-xl font-bold text-right`}>{formatNumber(formData.totalNetWeight || 0)}</p></div>
                 </div>
             </div>
 
             <div className="flex justify-end gap-4 pt-6">
-                <button type="button" onClick={onCancel} className="rounded-md bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">Cancelar</button>
-                <button type="submit" className="inline-flex justify-center rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">Guardar y Generar</button>
+                <button type="button" onClick={onCancel} className="rounded-md bg-background px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-inset ring-border hover:bg-accent">Cancelar</button>
+                <button type="submit" className="inline-flex justify-center rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">Guardar y Generar</button>
             </div>
         </form>
       </div>

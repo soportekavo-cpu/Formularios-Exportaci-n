@@ -1,15 +1,15 @@
 import React from 'react';
 import type { Certificate } from '../types';
 import { numberToWords } from '../utils/numberToWords';
-import { getCompanyInfo } from '../utils/companyData';
+import type { CompanyInfo } from '../utils/companyData';
 
 interface InvoicePDFProps {
   certificate: Certificate;
   logo: string | null;
+  companyInfo: CompanyInfo;
 }
 
-const InvoicePDF: React.FC<InvoicePDFProps> = ({ certificate, logo }) => {
-  const companyInfo = getCompanyInfo(certificate.company);
+const InvoicePDF: React.FC<InvoicePDFProps> = ({ certificate, logo, companyInfo }) => {
   const isProben = certificate.company === 'proben';
 
   const formatDate = (dateString: string) => {
@@ -144,7 +144,7 @@ const InvoicePDF: React.FC<InvoicePDFProps> = ({ certificate, logo }) => {
                 <td style={{ padding: '8px', verticalAlign: 'top' }}>{pkg.quantity}</td>
                 <td style={{ padding: '8px', verticalAlign: 'top', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                   <p style={{ fontWeight: 700, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{pkg.description}</p>
-                  {pkg.partidaNo && <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#6b7280', marginTop: '4px', margin: 0 }}>OIC: {pkg.partidaNo}</p>}
+                  {pkg.partidaNo && <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#dc2626', fontWeight: 600, marginTop: '4px', margin: 0 }}>OIC: {pkg.partidaNo}</p>}
                 </td>
                 <td style={{ padding: '8px', verticalAlign: 'top', textAlign: 'right' }}>${formatNumber(pkg.unitValue)}</td>
                 <td style={{ padding: '8px', verticalAlign: 'top', textAlign: 'right', fontWeight: 700 }}>${formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.unitValue) || 0))}</td>

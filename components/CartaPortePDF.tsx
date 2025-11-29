@@ -1,18 +1,18 @@
 import React from 'react';
 import type { Certificate } from '../types';
-import { getCompanyInfo } from '../utils/companyData';
+import type { CompanyInfo } from '../utils/companyData';
 
 interface CartaPortePDFProps {
   certificate: Certificate;
   logo: string | null;
+  companyInfo: CompanyInfo;
 }
 
-const CartaPortePDF: React.FC<CartaPortePDFProps> = ({ certificate, logo }) => {
+const CartaPortePDF: React.FC<CartaPortePDFProps> = ({ certificate, logo, companyInfo }) => {
   
-  const companyInfo = getCompanyInfo(certificate.company);
   const isProben = certificate.company === 'proben';
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
     if (!dateString) return '';
     const date = new Date(dateString + 'T00:00:00');
     return new Intl.DateTimeFormat('es-GT', { dateStyle: 'long' }).format(date);
@@ -22,20 +22,23 @@ const CartaPortePDF: React.FC<CartaPortePDFProps> = ({ certificate, logo }) => {
       return new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Number(num) || 0);
   }
   
-  const totalPackages = (certificate.packages || []).reduce((sum, p) => sum + Number(p.quantity || 0), 0);
-  const totalTare = (certificate.packages || []).reduce((sum, p) => sum + ((Number(p.quantity) || 0) * (Number(p.tareUnitWeight) || 0)), 0);
+  const allPackages = certificate.containers?.flatMap(c => c.packages) || [];
+  const totalPackages = allPackages.reduce((sum, p) => sum + Number(p.quantity || 0), 0);
+  const totalTare = allPackages.reduce((sum, p) => sum + ((Number(p.quantity) || 0) * (Number(p.tareUnitWeight) || 0)), 0);
+  const containerNos = certificate.containers?.map(c => c.containerNo).join(', ');
+  const sealNos = certificate.containers?.map(c => c.sealNo).filter(Boolean).join(', ');
   
   const noteText = "NOTA: El presente envio no debe ser firmado por personal de la empresa portuaria, sino que ésta emitirá y entregará al piloto de la unidad de transporte un acuse de recibo de exportación en donde se indicará la cantidad de bultos, peso total recibido, faltantes, excedentes y condiciones en que se recibe la mercaderia para conocimiento y registros del remitente.";
 
   const InfoBlock: React.FC<{ label: string; children: React.ReactNode; isPre?: boolean }> = ({ label, children, isPre=false }) => (
     <div>
         <h3 style={{ fontSize: '9px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>{label}</h3>
-        <div style={{ marginTop: '1px', fontSize: '11px', lineHeight: '1.4', color: '#1f2937', whiteSpace: isPre ? 'pre-wrap' : 'normal', wordBreak: 'break-word' }}>{children || '-'}</div>
+        <div style={{ marginTop: '1px', fontSize: '11px', lineHeight: '1.4', color: '#1f2937', whiteSpace: isPre ? 'pre-wrap' : 'normal', wordBreak: 'break-word', fontWeight: 500 }}>{children || '-'}</div>
     </div>
   );
   
   return (
-    <div style={{ fontFamily: 'Inter, sans-serif', padding: '15px' }}>
+    <div style={{ fontFamily: 'Inter, sans-serif', padding: '15px', fontSize: '11px' }}>
       <header>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <tbody>
@@ -67,36 +70,57 @@ const CartaPortePDF: React.FC<CartaPortePDFProps> = ({ certificate, logo }) => {
             </tbody>
           </table>
       </header>
-      <div style={{ marginTop: '24px', marginBottom: '24px', borderTop: '1px solid #d1d5db' }}></div>
-
-      {/* Title & Date */}
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px' }}>
+      
+      {/* Section for Title, Date, and Consignee */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', marginTop: '24px' }}>
           <tbody>
+              {/* Row 1: Title and Date */}
               <tr>
-                  <td style={{ verticalAlign: 'bottom' }}>
-                      <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#166534', letterSpacing: '0.1em', margin: 0 }}>CARTA DE PORTE</h2>
-                      <p style={{ fontSize: '11px', fontWeight: '600', color: '#1f2937', margin: '2px 0 0 0' }}>No: {certificate.certificateNumber}</p>
+                  {/* Title */}
+                  <td style={{ verticalAlign: 'bottom', width: '50%', paddingBottom: '10px' }}>
+                      <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#166534', letterSpacing: '0.1em', margin: 0, textTransform: 'uppercase' }}>Carta de Porte</h2>
+                      <p style={{ fontSize: '11px', fontWeight: '600', color: '#1f2937', margin: '4px 0 0 0' }}>No: {certificate.certificateNumber}</p>
                   </td>
-                  <td style={{ verticalAlign: 'bottom', textAlign: 'right' }}>
-                      <InfoBlock label="Lugar y Fecha">
-                          {certificate.place}, {formatDate(certificate.certificateDate)}
-                      </InfoBlock>
+                  {/* Date */}
+                  <td style={{ verticalAlign: 'bottom', textAlign: 'right', width: '50%', paddingBottom: '10px' }}>
+                      <table style={{ borderCollapse: 'collapse', marginLeft: 'auto', backgroundColor: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
+                          <tbody>
+                              <tr>
+                                  <td style={{ padding: '4px 8px' }}>
+                                      <h3 style={{ fontSize: '9px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Lugar y Fecha</h3>
+                                      <div style={{ marginTop: '2px', fontSize: '11px', lineHeight: '1.4', color: '#1f2937', fontWeight: 500, minHeight: '16px' }}>
+                                          {`${certificate.place || 'Guatemala'}, ${formatDate(certificate.certificateDate)}`.replace(/, $/, '') || '\u00A0'}
+                                      </div>
+                                  </td>
+                              </tr>
+                          </tbody>
+                      </table>
+                  </td>
+              </tr>
+              {/* Row 2: Consignee (centered) */}
+              <tr>
+                  <td colSpan={2} style={{ textAlign: 'center', paddingTop: '10px' }}>
+                      <table style={{ borderCollapse: 'collapse', margin: '0 auto', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb', minWidth: '50%' }}>
+                          <tbody>
+                              <tr>
+                                  <td style={{ padding: '8px', textAlign: 'left' }}>
+                                      <h3 style={{ fontSize: '9px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>CONSIGNADA A</h3>
+                                      <div style={{ marginTop: '2px', fontSize: '12px', lineHeight: '1.4', color: '#1f2937', fontWeight: 'bold', minHeight: '18px' }}>
+                                          {certificate.consignee || '\u00A0'}
+                                      </div>
+                                  </td>
+                              </tr>
+                          </tbody>
+                      </table>
                   </td>
               </tr>
           </tbody>
       </table>
       
-      {/* Consignee */}
-      <div style={{ marginBottom: '15px', padding: '8px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e5e7eb', pageBreakInside: 'avoid' }}>
-          <InfoBlock label="Consignada A">
-              <p style={{ fontWeight: '600', fontSize: '12px' }}>{certificate.consignee}</p>
-          </InfoBlock>
-      </div>
-
       {/* Main Table */}
       <main>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
-              <thead style={{ borderBottom: '2px solid #374151' }}>
+              <thead style={{ borderBottom: '2px solid #374151', borderTop: '2px solid #374151' }}>
                   <tr>
                       <th style={{ width: '8%', padding: '4px 2px', textAlign: 'left', fontWeight: '600' }}>CANT.</th>
                       <th style={{ width: '10%', padding: '4px 2px', textAlign: 'left', fontWeight: '600' }}>CLASE</th>
@@ -108,9 +132,9 @@ const CartaPortePDF: React.FC<CartaPortePDFProps> = ({ certificate, logo }) => {
                   </tr>
               </thead>
               <tbody>
-                  {(certificate.packages || []).map((pkg) => (
-                      <tr key={pkg.id} style={{ pageBreakInside: 'avoid', borderBottom: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '3px 2px' }}>{formatNumber(pkg.quantity, 0)}</td>
+                  {allPackages.map((pkg) => (
+                      <tr key={pkg.id} style={{ pageBreakInside: 'avoid', borderBottom: '0.5px solid #e5e7eb' }}>
+                          <td style={{ padding: '3px 2px', textAlign: 'left' }}>{formatNumber(pkg.quantity, 0)}</td>
                           <td style={{ padding: '3px 2px' }}>{pkg.type}</td>
                           <td style={{ padding: '3px 2px' }}>{pkg.marks}</td>
                           <td style={{ padding: '3px 2px' }}>{pkg.contains}</td>
@@ -122,8 +146,8 @@ const CartaPortePDF: React.FC<CartaPortePDFProps> = ({ certificate, logo }) => {
               </tbody>
               <tfoot style={{ borderTop: '2px solid #374151' }}>
                   <tr style={{ pageBreakInside: 'avoid' }}>
-                      <td style={{ paddingTop: '5px', fontWeight: '700' }}>{formatNumber(totalPackages, 0)}</td>
-                      <td colSpan={3} style={{ paddingTop: '5px', fontWeight: '700' }}>TOTALES</td>
+                      <td style={{ paddingTop: '5px', paddingLeft: '2px', fontWeight: '700', textAlign: 'left' }}>{formatNumber(totalPackages, 0)}</td>
+                      <td colSpan={3} style={{ paddingTop: '5px', paddingLeft: '2px', fontWeight: '700' }}>TOTALES</td>
                       <td style={{ paddingTop: '5px', textAlign: 'right', fontWeight: '700' }}>{formatNumber(certificate.totalNetWeight)}</td>
                       <td style={{ paddingTop: '5px', textAlign: 'right', fontWeight: '700' }}>{formatNumber(totalTare)}</td>
                       <td style={{ paddingTop: '5px', textAlign: 'right', fontWeight: '700' }}>{formatNumber(certificate.totalGrossWeight)}</td>
@@ -133,37 +157,54 @@ const CartaPortePDF: React.FC<CartaPortePDFProps> = ({ certificate, logo }) => {
       </main>
 
        {/* Transport Details */}
-      <section style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #e5e7eb', pageBreakInside: 'avoid' }}>
+      <section style={{ marginTop: '20px', paddingTop: '10px', pageBreakInside: 'avoid' }}>
           <h3 style={{ fontSize: '12px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>Detalles del Transporte</h3>
-          <table style={{ width: '100%', tableLayout: 'fixed' }}>
-              <tbody>
-                  <tr>
-                      <td style={{ width: '33.33%', paddingRight: '8px', paddingBottom: '6px' }}><InfoBlock label="Compañía Contratista">{certificate.transportCompany}</InfoBlock></td>
-                      <td style={{ width: '33.33%', padding: '0 8px 6px' }}><InfoBlock label="Piloto">{certificate.driverName}</InfoBlock></td>
-                      <td style={{ width: '33.33%', paddingLeft: '8px', paddingBottom: '6px' }}><InfoBlock label="Licencia">{certificate.driverLicense}</InfoBlock></td>
-                  </tr>
-                  <tr>
-                      <td style={{ width: '33.33%', paddingRight: '8px', paddingBottom: '6px' }}><InfoBlock label="Placas">{certificate.licensePlate}</InfoBlock></td>
-                      <td style={{ width: '33.33%', padding: '0 8px 6px' }}><InfoBlock label="Furgon/Plataforma">{certificate.transportUnit}</InfoBlock></td>
-                      <td style={{ width: '33.33%', paddingLeft: '8px', paddingBottom: '6px' }}><InfoBlock label="Contenedor">{certificate.containerNo}</InfoBlock></td>
-                  </tr>
-                  <tr>
-                      <td style={{ width: '33.33%', paddingRight: '8px' }}><InfoBlock label="Marchamo">{certificate.sealNo}</InfoBlock></td>
-                      <td style={{ width: '33.33%', padding: '0 8px' }}><InfoBlock label="Vapor">{certificate.shippingLine}</InfoBlock></td>
-                      <td style={{ width: '33.33%', paddingLeft: '8px' }}><InfoBlock label="Descargar En">{certificate.destination}</InfoBlock></td>
-                  </tr>
-              </tbody>
-          </table>
+          <div style={{ borderCollapse: 'collapse', fontSize: '11px' }}>
+              <div style={{ padding: '4px 0 8px 0', borderBottom: '0.5px solid transparent' }}>
+                  <InfoBlock label="Compañía Contratista">{certificate.transportCompany}</InfoBlock>
+              </div>
+              <table style={{ width: '100%', tableLayout: 'fixed' }}><tbody>
+              <tr style={{ borderBottom: '0.5px solid transparent' }}>
+                  <td style={{ width: '33.33%', padding: '8px 8px 8px 0', verticalAlign: 'top' }}>
+                      <InfoBlock label="Piloto">{certificate.driverName}</InfoBlock>
+                  </td>
+                  <td style={{ width: '33.33%', padding: '8px 8px 8px 8px', verticalAlign: 'top' }}>
+                      <InfoBlock label="Licencia">{certificate.driverLicense}</InfoBlock>
+                  </td>
+                  <td style={{ width: '33.33%', padding: '8px 0 8px 8px', verticalAlign: 'top' }}>
+                      <InfoBlock label="Placas">{certificate.licensePlate}</InfoBlock>
+                  </td>
+              </tr>
+              <tr style={{ borderBottom: '0.5px solid transparent' }}>
+                  <td style={{ padding: '8px 8px 8px 0', verticalAlign: 'top' }}>
+                      <InfoBlock label="Furgon/Plataforma">{certificate.transportUnit}</InfoBlock>
+                  </td>
+                  <td style={{ padding: '8px 8px 8px 8px', verticalAlign: 'top' }}>
+                      <InfoBlock label="Contenedor">{containerNos}</InfoBlock>
+                  </td>
+                  <td style={{ padding: '8px 0 8px 8px', verticalAlign: 'top' }}>
+                      <InfoBlock label="Marchamo">{sealNos}</InfoBlock>
+                  </td>
+              </tr>
+              <tr>
+                  <td style={{ padding: '8px 8px 8px 0', verticalAlign: 'top' }}>
+                      <InfoBlock label="Vapor">{certificate.shippingLine}</InfoBlock>
+                  </td>
+                  <td style={{ padding: '8px 8px 8px 8px', verticalAlign: 'top' }}>
+                      <InfoBlock label="Descargar En">{certificate.destination}</InfoBlock>
+                  </td>
+                  <td></td>
+              </tr>
+              </tbody></table>
+          </div>
       </section>
 
       {/* Observations */}
-      {certificate.observations && (
-          <section style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #e5e7eb', pageBreakInside: 'avoid' }}>
-              <InfoBlock label="Observaciones">
-                   <div style={{fontSize: '9px', whiteSpace: 'pre-wrap'}} dangerouslySetInnerHTML={{ __html: certificate.observations || '' }} />
-              </InfoBlock>
-          </section>
-      )}
+      <section style={{ marginTop: '15px', paddingTop: '15px', pageBreakInside: 'avoid' }}>
+          <InfoBlock label="Observaciones">
+               <div style={{fontSize: '10px', whiteSpace: 'pre-wrap'}} dangerouslySetInnerHTML={{ __html: certificate.observations || '' }} />
+          </InfoBlock>
+      </section>
 
       {/* Signatures & Note */}
       <footer style={{ marginTop: '80px', pageBreakInside: 'avoid' }}>
@@ -183,14 +224,8 @@ const CartaPortePDF: React.FC<CartaPortePDFProps> = ({ certificate, logo }) => {
                 </tr>
             </tbody>
         </table>
-
-        <div style={{ paddingTop: '8px', borderTop: '1px solid #e5e7eb' }}>
-            <p style={{ fontSize: '8px', color: '#4b5563', fontStyle: 'italic', margin: '0' }}>
-                {noteText}
-            </p>
-        </div>
+        <p style={{ fontSize: '9px', color: '#4b5563', margin: '0' }}>{noteText}</p>
       </footer>
-
     </div>
   );
 };

@@ -1,16 +1,18 @@
 import React from 'react';
 import type { Certificate } from '../types';
-import { getCompanyInfo } from '../utils/companyData';
+import type { CompanyInfo } from '../utils/companyData';
 
 interface CertificatePDFProps {
   certificate: Certificate;
   logo: string | null;
+  companyInfo: CompanyInfo;
 }
 
-const CertificatePDF: React.FC<CertificatePDFProps> = ({ certificate, logo }) => {
-  const numPackages = certificate.packages?.length || 0;
-  const companyInfo = getCompanyInfo(certificate.company);
+const CertificatePDF: React.FC<CertificatePDFProps> = ({ certificate, logo, companyInfo }) => {
+  const allPackages = certificate.containers?.flatMap(c => c.packages) || [];
+  const numPackages = allPackages.length;
   const isProben = certificate.company === 'proben';
+  const containerAndSealNos = certificate.containers?.map(c => `${c.containerNo}${c.sealNo ? ` / ${c.sealNo}`: ''}`).join(', ');
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
@@ -18,21 +20,10 @@ const CertificatePDF: React.FC<CertificatePDFProps> = ({ certificate, logo }) =>
     return new Intl.DateTimeFormat('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }).format(date);
   }
 
-  // FIX: Added a robust number formatting function to handle potentially non-numeric values.
-  const formatNumber = (value: unknown): string => {
-    return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value) || 0);
+  const formatNumber = (value: unknown, digits: number = 2): string => {
+    return new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Number(value) || 0);
   };
   
-  const subtotals = (certificate.packages || []).reduce((acc, pkg) => {
-      const type = (pkg.type || '').toUpperCase();
-      const totalWeight = (Number(pkg.quantity) || 0) * (Number(pkg.unitWeight) || 0);
-      if (!acc[type]) {
-        acc[type] = 0;
-      }
-      acc[type] += totalWeight;
-      return acc;
-  }, {} as Record<string, number>);
-
   const InfoBlock: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
     <div>
         <h3 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider" style={{ fontSize: '9px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</h3>
@@ -112,9 +103,8 @@ const CertificatePDF: React.FC<CertificatePDFProps> = ({ certificate, logo }) =>
          <table style={{ width: '100%', tableLayout: 'fixed' }}>
             <tbody>
                 <tr>
-                    <td style={{ width: '33.33%', verticalAlign: 'top', paddingRight: '10px' }}><InfoBlock label="Seller">{certificate.shipper}</InfoBlock></td>
-                    <td style={{ width: '33.33%', verticalAlign: 'top', padding: '0 10px' }}><InfoBlock label="Consignee">{certificate.consignee}</InfoBlock></td>
-                    <td style={{ width: '33.33%', verticalAlign: 'top', paddingLeft: '10px' }}><InfoBlock label="Notify">{certificate.notify}</InfoBlock></td>
+                    <td style={{ width: '50%', verticalAlign: 'top', paddingRight: '15px' }}><InfoBlock label="Consignee">{certificate.consignee}</InfoBlock></td>
+                    <td style={{ width: '50%', verticalAlign: 'top', paddingLeft: '15px' }}><InfoBlock label="Notify">{certificate.notify}</InfoBlock></td>
                 </tr>
             </tbody>
         </table>
@@ -124,17 +114,16 @@ const CertificatePDF: React.FC<CertificatePDFProps> = ({ certificate, logo }) =>
         <table style={{ width: '100%', tableLayout: 'fixed' }}>
             <tbody>
                 <tr>
-                    <td style={{ width: '25%', paddingBottom: '12px', verticalAlign: 'top' }}><InfoBlock label="Certificate Date">{formatDate(certificate.certificateDate)}</InfoBlock></td>
                     <td style={{ width: '25%', paddingBottom: '12px', verticalAlign: 'top' }}><InfoBlock label="Shipment Date">{formatDate(certificate.shipmentDate)}</InfoBlock></td>
                     <td style={{ width: '25%', paddingBottom: '12px', verticalAlign: 'top' }}><InfoBlock label="Bill of Lading No.">{certificate.billOfLadingNo}</InfoBlock></td>
-                    <td style={{ width: '25%', paddingBottom: '12px', verticalAlign: 'top' }}><InfoBlock label="Container No.">{certificate.containerNo}</InfoBlock></td>
+                    <td style={{ width: '25%', paddingBottom: '12px', verticalAlign: 'top' }}><InfoBlock label="Container / Seal No(s).">{containerAndSealNos}</InfoBlock></td>
+                    <td style={{ width: '25%', paddingBottom: '12px', verticalAlign: 'top' }}><InfoBlock label="Shipping Line">{certificate.shippingLine}</InfoBlock></td>
                 </tr>
                 <tr>
-                    <td style={{ width: '25%', verticalAlign: 'top' }}><InfoBlock label="Shipping Line">{certificate.shippingLine}</InfoBlock></td>
                     <td style={{ width: '25%', verticalAlign: 'top' }}><InfoBlock label="Destination">{certificate.destination}</InfoBlock></td>
                     <td style={{ width: '25%', verticalAlign: 'top' }}><InfoBlock label="Product">{certificate.product}</InfoBlock></td>
-                    <td style={{ width: '25%', verticalAlign: 'top' }}>
-                    </td>
+                    <td style={{ width: '25%', verticalAlign: 'top' }}>{certificate.contractNo && <InfoBlock label="Contract No.">{certificate.contractNo}</InfoBlock>}</td>
+                    <td style={{ width: '25%', verticalAlign: 'top' }}></td>
                 </tr>
             </tbody>
         </table>
@@ -142,50 +131,99 @@ const CertificatePDF: React.FC<CertificatePDFProps> = ({ certificate, logo }) =>
 
       <main>
         <h3 className="text-sm font-semibold text-gray-800 mb-2" style={{ fontSize: '12px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>Details</h3>
-        <table className="min-w-full" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
-          <thead className="border-b border-gray-300">
-            <tr>
-              <th scope="col" className="py-2 pl-0 pr-3 text-left font-semibold text-gray-900">TYPE</th>
-              <th scope="col" className="px-3 py-2 text-right font-semibold text-gray-900">QUANTITY</th>
-              <th scope="col" className="px-3 py-2 text-right font-semibold text-gray-900">UNIT WEIGHT (KG)</th>
-              <th scope="col" className="px-3 py-2 text-left font-semibold text-gray-900">MARKS</th>
-              {isQualityCert && (
-                <th scope="col" className="px-3 py-2 text-left font-semibold text-gray-900">QUALITY</th>
-              )}
-              <th scope="col" className="py-2 pl-3 pr-0 text-right font-semibold text-gray-900">TOTAL WEIGHT (KG)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(certificate.packages || []).map((pkg) => (
-              <tr key={pkg.id} className="border-b border-gray-200" style={{ pageBreakInside: 'avoid' }}>
-                <td className="whitespace-nowrap py-2 pl-0 pr-3 font-medium text-gray-900">{pkg.type}</td>
-                <td className="whitespace-nowrap px-3 py-2 text-gray-500 text-right">{pkg.quantity}</td>
-                <td className="whitespace-nowrap px-3 py-2 text-gray-500 text-right">{formatNumber(pkg.unitWeight)}</td>
-                <td className="whitespace-nowrap px-3 py-2 text-gray-500">{pkg.marks}</td>
-                {isQualityCert && (
-                    <td className="px-3 py-2 text-gray-500" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{pkg.quality}</td>
-                )}
-                <td className="whitespace-nowrap py-2 pl-3 pr-0 font-medium text-gray-900 text-right">{formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.unitWeight) || 0))}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {certificate.containers && certificate.containers.length > 1 ? (
+            certificate.containers.map(container => {
+                const containerSubtotalQty = container.packages.reduce((sum, p) => sum + Number(p.quantity || 0), 0);
+                const containerSubtotalNet = container.packages.reduce((sum, p) => sum + ((Number(p.quantity) || 0) * (Number(p.unitWeight) || 0)), 0);
+
+                return (
+                    <div key={container.id} style={{ pageBreakInside: 'avoid', marginBottom: '16px' }}>
+                        <div style={{ padding: '4px 8px', backgroundColor: '#f1f5f9', borderRadius: '4px', borderBottom: '2px solid #e2e8f0' }}>
+                            <h4 style={{ fontSize: '11px', fontWeight: '700', color: '#1f2937', margin: 0 }}>
+                                CONTAINER: {container.containerNo}
+                                {container.sealNo && ` / SEAL: ${container.sealNo}`}
+                            </h4>
+                        </div>
+                        <table className="min-w-full" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
+                            <thead className="border-b border-gray-300">
+                                <tr>
+                                <th scope="col" className="py-2 pl-0 pr-3 text-left font-semibold text-gray-900">TYPE</th>
+                                <th scope="col" className="px-3 py-2 text-right font-semibold text-gray-900">QUANTITY</th>
+                                <th scope="col" className="px-3 py-2 text-right font-semibold text-gray-900">UNIT WEIGHT (KG)</th>
+                                <th scope="col" className="px-3 py-2 text-left font-semibold text-gray-900">MARKS</th>
+                                {isQualityCert && (
+                                    <th scope="col" className="px-3 py-2 text-left font-semibold text-gray-900">QUALITY</th>
+                                )}
+                                <th scope="col" className="py-2 pl-3 pr-0 text-right font-semibold text-gray-900">TOTAL WEIGHT (KG)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {container.packages.map((pkg) => (
+                                <tr key={pkg.id} className="border-b border-gray-200" style={{ pageBreakInside: 'avoid' }}>
+                                    <td className="whitespace-nowrap py-2 pl-0 pr-3 font-medium text-gray-900">{pkg.type}</td>
+                                    <td className="whitespace-nowrap px-3 py-2 text-gray-500 text-right">{pkg.quantity}</td>
+                                    <td className="whitespace-nowrap px-3 py-2 text-gray-500 text-right">{formatNumber(pkg.unitWeight)}</td>
+                                    <td className="whitespace-nowrap px-3 py-2 text-gray-500">{pkg.marks}</td>
+                                    {isQualityCert && (
+                                        <td className="px-3 py-2 text-gray-500" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{pkg.quality}</td>
+                                    )}
+                                    <td className="whitespace-nowrap py-2 pl-3 pr-0 font-medium text-gray-900 text-right">{formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.unitWeight) || 0))}</td>
+                                </tr>
+                                ))}
+                            </tbody>
+                            <tfoot style={{ borderTop: '2px solid #6b7280' }}>
+                                <tr>
+                                    <td style={{ paddingTop: '4px', paddingRight: '12px', textAlign: 'left', fontSize: '10px', fontWeight: '700' }}>Subtotals</td>
+                                    <td style={{ paddingTop: '4px', paddingLeft: '6px', paddingRight: '6px', textAlign: 'right', fontSize: '10px', fontWeight: '700' }}>{formatNumber(containerSubtotalQty, 0)}</td>
+                                    <td colSpan={isQualityCert ? 3 : 2}></td>
+                                    <td style={{ paddingTop: '4px', paddingLeft: '2px', paddingRight: '2px', textAlign: 'right', fontSize: '10px', fontWeight: '700' }}>{formatNumber(containerSubtotalNet)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                )
+            })
+        ) : (
+            <div>
+                <table className="min-w-full" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
+                    <thead className="border-b border-gray-300">
+                        <tr>
+                            <th scope="col" className="py-2 pl-0 pr-3 text-left font-semibold text-gray-900">TYPE</th>
+                            <th scope="col" className="px-3 py-2 text-right font-semibold text-gray-900">QUANTITY</th>
+                            <th scope="col" className="px-3 py-2 text-right font-semibold text-gray-900">UNIT WEIGHT (KG)</th>
+                            <th scope="col" className="px-3 py-2 text-left font-semibold text-gray-900">MARKS</th>
+                            {isQualityCert && (
+                                <th scope="col" className="px-3 py-2 text-left font-semibold text-gray-900">QUALITY</th>
+                            )}
+                            <th scope="col" className="py-2 pl-3 pr-0 text-right font-semibold text-gray-900">TOTAL WEIGHT (KG)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {allPackages.map((pkg) => (
+                            <tr key={pkg.id} className="border-b border-gray-200" style={{ pageBreakInside: 'avoid' }}>
+                                <td className="whitespace-nowrap py-2 pl-0 pr-3 font-medium text-gray-900">{pkg.type}</td>
+                                <td className="whitespace-nowrap px-3 py-2 text-gray-500 text-right">{pkg.quantity}</td>
+                                <td className="whitespace-nowrap px-3 py-2 text-gray-500 text-right">{formatNumber(pkg.unitWeight)}</td>
+                                <td className="whitespace-nowrap px-3 py-2 text-gray-500">{pkg.marks}</td>
+                                {isQualityCert && (
+                                    <td className="px-3 py-2 text-gray-500" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{pkg.quality}</td>
+                                )}
+                                <td className="whitespace-nowrap py-2 pl-3 pr-0 font-medium text-gray-900 text-right">{formatNumber((Number(pkg.quantity) || 0) * (Number(pkg.unitWeight) || 0))}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        )}
       </main>
       
       {/* Footer Block */}
       <div style={{ marginTop: numPackages > 2 ? '24px' : '12px', pageBreakInside: 'avoid' }}>
           <div className="flex justify-end" style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <div className="w-full max-w-sm space-y-2" style={{ width: '100%', maxWidth: '384px' }}>
-                  {Object.entries(subtotals).map(([type, total]) => (
-                      <div key={type} className="flex justify-between text-gray-600" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#4b5563' }}>
-                          <span>TOTAL WEIGHT {type.toUpperCase()}:</span>
-                          <span className="font-medium text-gray-700">{formatNumber(total)} KG.</span>
-                      </div>
-                  ))}
-                   <div className="flex justify-between font-bold text-gray-900 pt-3 mt-3 border-t-2 border-gray-900" style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', fontSize: '12px', color: '#111827', paddingTop: '12px', marginTop: '12px', borderTop: '2px solid #111827' }}>
-                      <span>TOTAL NET WEIGHT:</span>
-                      {/* FIX: Use the formatNumber helper to safely format the totalNetWeight. */}
-                      <span>{formatNumber(certificate.totalNetWeight)} KG.</span>
+              <div className="w-full max-w-sm" style={{ width: '100%', maxWidth: '384px' }}>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', color: '#111827', paddingTop: '8px', marginTop: '12px', borderTop: '2px solid #111827' }}>
+                      <span style={{ fontWeight: 600, fontSize: '11px' }}>TOTAL NET WEIGHT:</span>
+                      <span style={{ fontWeight: 700, fontSize: '12px' }}>{formatNumber(certificate.totalNetWeight)} KG.</span>
                   </div>
               </div>
           </div>

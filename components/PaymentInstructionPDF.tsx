@@ -1,15 +1,15 @@
 import React from 'react';
 import type { Certificate, BankAccount } from '../types';
-import { getCompanyInfo } from '../utils/companyData';
+import type { CompanyInfo } from '../utils/companyData';
 
 interface PaymentInstructionPDFProps {
   certificate: Certificate;
   bankAccounts: BankAccount[];
   logo: string | null;
+  companyInfo: CompanyInfo;
 }
 
-const PaymentInstructionPDF: React.FC<PaymentInstructionPDFProps> = ({ certificate, bankAccounts, logo }) => {
-  const companyInfo = getCompanyInfo(certificate.company);
+const PaymentInstructionPDF: React.FC<PaymentInstructionPDFProps> = ({ certificate, bankAccounts, logo, companyInfo }) => {
   const isProben = certificate.company === 'proben';
 
   const formatDate = (dateString: string) => {

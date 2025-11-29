@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import type { CompanyInfo } from './companyData';
@@ -25,8 +26,9 @@ export const printComponent = (
             const element = document.getElementById('element-to-print');
             const company = ${JSON.stringify(companyInfo)};
 
+            // Tighter margins for better single-page fit (Top, Right, Bottom, Left in mm)
             const pdfOptions = {
-                margin: ${showFooter ? '[25, 20, 35, 20]' : '[15, 15, 15, 15]'}, // Margen en mm [arriba, izquierda, abajo, derecha] - Aumentado el margen inferior para el pie de página
+                margin: ${showFooter ? '[10, 10, 20, 10]' : '[5, 10, 5, 10]'}, 
                 filename: '${title}.pdf',
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, letterRendering: true },
@@ -34,8 +36,10 @@ export const printComponent = (
                 pagebreak: { mode: ['css', 'legacy'] }
             };
             
-            const pdfPromise = html2pdf().from(element).set(pdfOptions).toPdf().get('pdf').then(function(pdf) {
-                if (${showFooter} && company) {
+            let pdfPromise = html2pdf().from(element).set(pdfOptions);
+            
+            if (${showFooter} && company) {
+                 pdfPromise = pdfPromise.toPdf().get('pdf').then(function(pdf) {
                     const totalPages = pdf.internal.getNumberOfPages();
                     const addressLine1 = company.fullAddress;
                     const addressLine2 = 'PBX: ' + company.phone + ' - e-mail: ' + company.email;
@@ -50,21 +54,20 @@ export const printComponent = (
                         // Dibujar la línea naranja
                         pdf.setDrawColor(249, 115, 22); // Un color naranja similar a la imagen (Tailwind orange-500)
                         pdf.setLineWidth(0.5);
-                        pdf.line(20, pageHeight - 25, pageWidth - 20, pageHeight - 25); // Dibuja la línea horizontal
+                        pdf.line(15, pageHeight - 20, pageWidth - 15, pageHeight - 20); // Dibuja la línea horizontal
 
                         // Agregar el texto del pie de página
-                        pdf.text(addressLine1, pageWidth / 2, pageHeight - 20, { align: 'center' });
-                        pdf.text(addressLine2, pageWidth / 2, pageHeight - 16, { align: 'center' });
+                        pdf.text(addressLine1, pageWidth / 2, pageHeight - 15, { align: 'center' });
+                        pdf.text(addressLine2, pageWidth / 2, pageHeight - 11, { align: 'center' });
                     }
-                }
-                return pdf;
-            });
+                    return pdf;
+                });
+            }
+
 
             if (${saveOnly}) {
                 // Inicia la descarga y cierra la ventana temporal.
-                pdfPromise.then(function(pdf) {
-                    pdf.save(pdfOptions.filename);
-                }).then(() => {
+                pdfPromise.save().then(() => {
                     setTimeout(() => window.close(), 500);
                 }).catch(err => {
                     console.error('Error al guardar el PDF:', err);
@@ -74,9 +77,7 @@ export const printComponent = (
             } else {
                 // Genera una URL de tipo blob y navega la nueva pestaña a esa URL,
                 // convirtiéndola en un visor de PDF sin activar el diálogo de impresión del navegador.
-                pdfPromise.then(function(pdf) {
-                    return pdf.output('bloburl');
-                }).then((blobUrl) => {
+                 pdfPromise.output('bloburl').then((blobUrl) => {
                     window.location.href = blobUrl;
                 }).catch(err => {
                     console.error('Error al generar el PDF:', err);

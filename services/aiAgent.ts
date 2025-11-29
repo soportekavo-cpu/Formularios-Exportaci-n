@@ -7,6 +7,7 @@ const getApiKey = () => {
   // 1. Runtime Injection (Producción con App Hosting / Docker vía server.js)
   // @ts-ignore
   if (typeof window !== 'undefined' && window.env && window.env.VITE_GEMINI_API_KEY) {
+    console.log("[AI Agent] Usando clave inyectada por el servidor (Runtime)");
     // @ts-ignore
     return window.env.VITE_GEMINI_API_KEY;
   }
@@ -14,6 +15,7 @@ const getApiKey = () => {
   // 2. Vite Build Time (Desarrollo Local)
   // @ts-ignore
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+    console.log("[AI Agent] Usando clave de entorno local (Vite)");
     // @ts-ignore
     return import.meta.env.VITE_GEMINI_API_KEY;
   }
@@ -33,7 +35,7 @@ let ai: GoogleGenAI | null = null;
 if (API_KEY) {
     ai = new GoogleGenAI({ apiKey: API_KEY });
 } else {
-    console.log("⚠️ [AI Agent] API Key no detectada. La IA estará deshabilitada hasta que se configure el secreto.");
+    console.warn("⚠️ [AI Agent] API Key NO detectada. La IA no funcionará.");
 }
 
 // --- TOOL DEFINITIONS ---
@@ -84,7 +86,7 @@ export class LogisticsAgent {
     async startChat() {
         const key = getApiKey();
         if (!key) {
-            return "⚠️ Sistema desconectado: No se ha configurado la API Key de Gemini. \n\nPara el administrador: Ve a la consola de Google Cloud Run, edita la revisión actual y agrega la variable de entorno 'VITE_GEMINI_API_KEY' manualmente apuntando a tu secreto.";
+            return "⚠️ Error de Configuración: No se detecta la API Key de Gemini.\n\nSi estás en producción, asegúrate de que el secreto VITE_GEMINI_API_KEY esté habilitado en App Hosting y que la cuenta de servicio tenga permiso 'Secret Manager Secret Accessor'.";
         }
         
         // Re-init AI if key was late-bound (e.g. hydration)
@@ -132,9 +134,8 @@ export class LogisticsAgent {
     async sendMessage(message: string): Promise<string> {
         if (!this.chatSession) await this.startChat();
         
-        // Si después de intentar iniciar no hay sesión (porque falta la key), devolver error amigable
         if (!this.chatSession) {
-             return "⚠️ Error: API Key no configurada. Por favor configura VITE_GEMINI_API_KEY en las variables de entorno.";
+             return "⚠️ Error: No pude iniciar la sesión de chat. Verifica la configuración de la API Key.";
         }
 
         try {

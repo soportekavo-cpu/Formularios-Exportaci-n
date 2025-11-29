@@ -5,12 +5,8 @@ runConfig:
   cpu: 1
   memoryMiB: 512
 
-# COMENTADO TEMPORALMENTE: Esto desbloquea el despliegue.
-# El error "Secret mal configurado" ocurre porque la cuenta de servicio de construcción 
-# no tiene permisos. Al comentarlo, la app subirá.
-# Una vez arriba, agregaremos la variable manualmente en la consola de Cloud Run.
-# env:
-#   - variable: VITE_GEMINI_API_KEY
-#     secret: VITE_GEMINI_API_KEY
-#     availability:
-#       - RUNTIME
+env:
+  - variable: VITE_GEMINI_API_KEY
+    secret: VITE_GEMINI_API_KEY
+    availability:
+      - RUNTIME

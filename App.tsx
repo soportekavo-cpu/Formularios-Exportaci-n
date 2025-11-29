@@ -32,72 +32,12 @@ import HomeDashboard from './components/HomeDashboard';
 import RoleManager from './components/RoleManager';
 import { ExclamationTriangleIcon } from './components/Icons';
 import { seedDatabase } from './services/seeder';
+import { defaultRoles, defaultUsers, defaultTasks, defaultAnacafeSubtasks } from './utils/defaults';
 
 type View = 'list' | 'form' | 'view' | 'new_shipment';
 type Page = 'dashboard' | 'shipments' | 'documents' | 'admin' | 'liquidaciones';
 type Theme = 'light' | 'dark' | 'system';
 type AdminTab = 'dizano' | 'proben' | 'users' | 'roles' | 'buyers' | 'consignees' | 'notifiers';
-
-// Updated Default Roles with Granular Permissions
-const defaultRoles: Role[] = [
-    { id: 'admin', name: 'Admin', permissions: [
-        { resource: 'dashboard', actions: ['view'] },
-        { resource: 'contracts', actions: ['view', 'create', 'edit', 'delete'] },
-        { resource: 'shipments', actions: ['view', 'create', 'edit', 'delete'] },
-        { resource: 'liquidaciones', actions: ['view', 'create', 'edit', 'delete'] },
-        { resource: 'admin', actions: ['view', 'create', 'edit', 'delete'] },
-        // Full document access
-        { resource: 'documents_weight', actions: ['view', 'create', 'edit', 'delete'] },
-        { resource: 'documents_quality', actions: ['view', 'create', 'edit', 'delete'] },
-        { resource: 'documents_packing', actions: ['view', 'create', 'edit', 'delete'] },
-        { resource: 'documents_porte', actions: ['view', 'create', 'edit', 'delete'] },
-        { resource: 'documents_invoice', actions: ['view', 'create', 'edit', 'delete'] },
-        { resource: 'documents_payment', actions: ['view', 'create', 'edit', 'delete'] },
-    ]},
-    { id: 'logistics', name: 'Logística', permissions: [
-        { resource: 'dashboard', actions: ['view'] },
-        { resource: 'contracts', actions: ['view'] },
-        { resource: 'shipments', actions: ['view', 'create', 'edit'] },
-        { resource: 'documents_weight', actions: ['view', 'create', 'edit'] },
-        { resource: 'documents_quality', actions: ['view', 'create', 'edit'] },
-        { resource: 'documents_packing', actions: ['view', 'create', 'edit'] },
-        { resource: 'documents_porte', actions: ['view', 'create', 'edit'] },
-    ]},
-    { id: 'billing', name: 'Facturación', permissions: [
-        { resource: 'dashboard', actions: ['view'] },
-        { resource: 'contracts', actions: ['view'] },
-        { resource: 'liquidaciones', actions: ['view', 'create', 'edit'] },
-        { resource: 'documents_invoice', actions: ['view', 'create', 'edit'] },
-        { resource: 'documents_payment', actions: ['view', 'create', 'edit'] },
-    ]}
-];
-
-const defaultUsers: User[] = [
-    { id: '1', name: 'Yony Roquel', email: 'yroquel@gmail.com', roleId: 'admin' },
-    { id: '2', name: 'Logistics User', email: 'logistics@example.com', roleId: 'logistics' },
-    { id: '3', name: 'Billing User', email: 'billing@example.com', roleId: 'billing' },
-];
-
-const defaultTasks: Omit<ShipmentTask, 'id'>[] = [
-    { key: 'contract', label: 'Contrato e Instrucciones Recibidas', status: 'pending', priority: 'High', category: 'Documentación' },
-    { key: 'booking', label: 'Booking con Naviera Confirmado', status: 'pending', priority: 'High', category: 'Logística' },
-    { key: 'anacafe', label: 'Permiso de Anacafé', status: 'pending', priority: 'High', category: 'Documentación' },
-    { key: 'bl_approval', label: 'Borrador de BL Aprobado', status: 'pending', priority: 'High', category: 'Documentación' },
-    { key: 'fitosanitario', label: 'Certificado Fitosanitario', status: 'pending', priority: 'Medium', category: 'Documentación' },
-    { key: 'isf', label: 'ISF Enviado (si aplica)', status: 'pending', priority: 'Medium', category: 'Aduanas' },
-    { key: 'carta_porte', label: 'Carta de Porte Generada', status: 'pending', priority: 'Medium', category: 'Logística' },
-    { key: 'zarpe', label: 'Zarpe Confirmado por Naviera', status: 'pending', priority: 'High', category: 'Logística' },
-    { key: 'final_docs', label: 'Documentos Finales Generados', status: 'pending', priority: 'High', category: 'Documentación' },
-    { key: 'cobro', label: 'Cobro Enviado', status: 'pending', priority: 'High', category: 'Financiero' },
-    { key: 'pago', label: 'Pago Recibido', status: 'pending', priority: 'High', category: 'Financiero' },
-];
-
-const defaultAnacafeSubtasks: AnacafeSubtask[] = [
-    { key: 'informe_venta', label: 'Informe de Venta', completed: false },
-    { key: 'fob_contrat', label: 'FOB Contrat', completed: false },
-    { key: 'factura_especial', label: 'Factura Especial', completed: false },
-    { key: 'pago_impuestos', label: 'Pago de Impuestos', completed: false },
-];
 
 const DeleteConfirmationModal = ({ onConfirm, onCancel, title = "Eliminar Documento", message = "¿Estás seguro de que quieres eliminar este documento? Esta acción no se puede deshacer." }: { onConfirm: () => void, onCancel: () => void, title?: string, message?: string }) => (
     <div className="relative z-[100]" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -188,6 +128,7 @@ export default function App() {
 
   // Ejecutar seeder al cargar
   useEffect(() => {
+      console.log("Iniciando aplicación y verificando base de datos...");
       seedDatabase();
   }, []);
 
@@ -331,7 +272,7 @@ export default function App() {
 
   const handleUnifiedAdd = () => {
       setInitialShipmentData(null);
-      // Ahora va directo al formulario, eliminada la opción de IA
+      // Directo a nuevo embarque, sin IA
       setView('new_shipment');
   };
 

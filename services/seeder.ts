@@ -1,4 +1,3 @@
-
 import { dbService } from './db';
 import { defaultRoles, defaultUsers } from '../utils/defaults';
 import { companyData } from '../utils/companyData';
@@ -13,11 +12,8 @@ export const seedDatabase = async () => {
     // We can also check if window.location.hostname is NOT localhost
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-    // We allow seeding in local too if using Firestore emulator, but primarily for Prod
-    if (!isProduction && isLocal) {
-        console.log("Modo Desarrollo: Saltando sembrado automático (usando LocalStorage).");
-        return;
-    }
+    // REMOVED: Skip logic for local dev. We WANT to seed in local to help the user.
+    // if (!isProduction && isLocal) { ... }
 
     try {
         const userService = dbService.getService<User>();
@@ -44,9 +40,10 @@ export const seedDatabase = async () => {
             await settingsService.create('settings', { id: 'dizanoInfo', ...companyData.dizano });
             await settingsService.create('settings', { id: 'probenInfo', ...companyData.proben });
             
-            console.log("¡Sembrado completado con éxito!");
+            console.log("¡Sembrado completado con éxito! Recargando para mostrar datos...");
+            
             // Forzar recarga para que la app vea los nuevos datos si es necesario
-            window.location.reload();
+            setTimeout(() => window.location.reload(), 1500);
         } else {
             console.log("Base de datos ya inicializada.");
         }

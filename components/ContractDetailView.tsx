@@ -615,9 +615,19 @@ const ContractDetailView: React.FC<ContractDetailViewProps> = ({
 
   const totalQuintales = useMemo(() => {
     const partidas = Array.isArray(contract.partidas) ? contract.partidas : [];
-    return partidas.filter(p => p).reduce((sum, p) => sum + (Number(p.pesoKg || 0) / 46), 0).toFixed(2);
+    // Calculate using pesoQqs if available, otherwise fallback to KG/46
+    const total = partidas.filter(p => p).reduce((sum, p) => {
+        const qqs = p.pesoQqs ? Number(p.pesoQqs) : (Number(p.pesoKg || 0) / 46);
+        return sum + qqs;
+    }, 0);
+    return total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }, [contract.partidas]);
   
+  const hasCertifications = useMemo(() => {
+      if (!contract.certifications) return false;
+      return Object.values(contract.certifications).some(val => val === true);
+  }, [contract.certifications]);
+
   const openPdf = (pdf: Contract['contractPdf']) => {
     if (pdf) {
       if (pdf.url) {
@@ -776,7 +786,7 @@ const ContractDetailView: React.FC<ContractDetailViewProps> = ({
           <InfoItem label="Tipo de Café" value={<span className="font-bold text-green-500">{contract.coffeeType}</span>} />
           <InfoItem label="Posición (Mes)" value={contract.marketMonth} />
           <InfoItem label="Mes Embarque" value={contract.shipmentMonth} />
-          <InfoItem label="Certificaciones" value={<CertificationsDisplay certifications={contract.certifications} />} className="col-span-2"/>
+          {hasCertifications && <InfoItem label="Certificaciones" value={<CertificationsDisplay certifications={contract.certifications} />} className="col-span-2"/>}
           <InfoItem label="Contrato Terminado" value={contract.isTerminated ? 'Sí' : 'No'} className={contract.isTerminated ? 'text-green-500 font-bold' : ''}/>
         </div>
         <div className="flex gap-4 pt-4 border-t">

@@ -58,7 +58,10 @@ const ShipmentDashboard: React.FC<ShipmentDashboardProps> = ({ contracts, onView
     
     const calculateTotalQuintales = (partidas: Contract['partidas']) => {
         const safePartidas = Array.isArray(partidas) ? partidas : [];
-        return safePartidas.filter(p => p).reduce((sum, p) => sum + Number(p.quintales || 0), 0);
+        return safePartidas.filter(p => p).reduce((sum, p) => {
+            const qqs = p.pesoQqs ? Number(p.pesoQqs) : (Number(p.pesoKg || 0) / 46);
+            return sum + qqs;
+        }, 0);
     };
 
     const handleSort = (key: SortKey) => {

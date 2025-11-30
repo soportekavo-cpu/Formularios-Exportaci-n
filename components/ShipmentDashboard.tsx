@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Contract } from '../types';
-import { PlusIcon, ShipIcon, PencilIcon, TrashIcon, EyeIcon } from './Icons';
+import { PlusIcon, ShipIcon, PencilIcon, TrashIcon, EyeIcon, ArrowUpIcon, ArrowDownIcon } from './Icons';
 import { getHarvestYear } from '../utils/companyData';
 
 interface ShipmentDashboardProps {
@@ -13,42 +13,41 @@ interface ShipmentDashboardProps {
   canEdit: boolean;
 }
 
+type SortKey = 'saleDate' | 'contractNumber' | 'buyer' | 'coffeeType' | 'totalQqs';
+
 const ShipmentDashboard: React.FC<ShipmentDashboardProps> = ({ contracts, onViewContract, onAddContract, onEditContract, onDeleteContract, canEdit }) => {
     const [showActiveOnly, setShowActiveOnly] = useState(true);
     const [selectedHarvest, setSelectedHarvest] = useState<string>('');
+    
+    // Sorting state
+    const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({
+        key: 'saleDate',
+        direction: 'desc',
+    });
 
-    // Calculate available harvest years from contracts AND ensure current/next years are available
+    // Calculate available harvest years
     const availableHarvests = useMemo(() => {
         const years = new Set<string>();
-        
-        // 1. Get context based on today's date
         const today = new Date();
         const currentYear = today.getFullYear();
-        const currentMonth = today.getMonth(); // 0 = Jan, 9 = Oct.
-        
-        // Determine the start year of the current harvest cycle
+        const currentMonth = today.getMonth(); 
         const baseYear = currentMonth >= 9 ? currentYear : currentYear - 1;
 
-        // Always add Previous, Current, and Next harvest years to the list
-        years.add(`${baseYear - 1}-${baseYear}`);     // Previous
-        years.add(`${baseYear}-${baseYear + 1}`);     // Current
-        years.add(`${baseYear + 1}-${baseYear + 2}`); // Next
+        years.add(`${baseYear - 1}-${baseYear}`);
+        years.add(`${baseYear}-${baseYear + 1}`);
+        years.add(`${baseYear + 1}-${baseYear + 2}`);
         
-        // 2. Add any harvest years found in existing contracts (preserves history)
         contracts.forEach(c => {
             const harvest = c.harvestYear || getHarvestYear(c.saleDate || c.creationDate);
             if (harvest) years.add(harvest);
         });
 
-        // Return sorted descending (newest first)
         return Array.from(years).sort().reverse();
     }, [contracts]);
 
-    // Set default selection to current harvest if nothing selected
     useEffect(() => {
         if (!selectedHarvest) {
             const currentHarvest = getHarvestYear(new Date().toISOString().split('T')[0]);
-            // Check if current harvest is in list, otherwise pick the first available (newest)
             if (availableHarvests.includes(currentHarvest)) {
                 setSelectedHarvest(currentHarvest);
             } else if (availableHarvests.length > 0) {
@@ -59,17 +58,67 @@ const ShipmentDashboard: React.FC<ShipmentDashboardProps> = ({ contracts, onView
     
     const calculateTotalQuintales = (partidas: Contract['partidas']) => {
         const safePartidas = Array.isArray(partidas) ? partidas : [];
-        return safePartidas.filter(p => p).reduce((sum, p) => sum + Number(p.quintales || 0), 0).toFixed(2);
+        return safePartidas.filter(p => p).reduce((sum, p) => sum + Number(p.quintales || 0), 0);
     };
 
-    const filteredContracts = useMemo(() => {
-        return contracts.filter(c => {
+    const handleSort = (key: SortKey) => {
+        setSortConfig(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }));
+    };
+
+    const filteredAndSortedContracts = useMemo(() => {
+        // 1. Filter
+        let result = contracts.filter(c => {
             const cHarvest = c.harvestYear || getHarvestYear(c.saleDate || c.creationDate);
             const matchesHarvest = cHarvest === selectedHarvest;
             const matchesStatus = showActiveOnly ? !c.isTerminated : true;
             return matchesHarvest && matchesStatus;
         });
-    }, [contracts, selectedHarvest, showActiveOnly]);
+
+        // 2. Sort
+        result.sort((a, b) => {
+            let aValue: any = '';
+            let bValue: any = '';
+
+            switch (sortConfig.key) {
+                case 'saleDate':
+                    aValue = new Date(a.saleDate || a.creationDate).getTime();
+                    bValue = new Date(b.saleDate || b.creationDate).getTime();
+                    break;
+                case 'contractNumber':
+                    aValue = a.contractNumber || '';
+                    bValue = b.contractNumber || '';
+                    break;
+                case 'buyer':
+                    aValue = a.buyer || '';
+                    bValue = b.buyer || '';
+                    break;
+                case 'coffeeType':
+                    aValue = a.coffeeType || '';
+                    bValue = b.coffeeType || '';
+                    break;
+                case 'totalQqs':
+                    aValue = calculateTotalQuintales(a.partidas);
+                    bValue = calculateTotalQuintales(b.partidas);
+                    break;
+                default:
+                    return 0;
+            }
+
+            if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        return result;
+    }, [contracts, selectedHarvest, showActiveOnly, sortConfig]);
+
+    const SortIcon = ({ column }: { column: SortKey }) => {
+        if (sortConfig.key !== column) return <span className="ml-1 opacity-20">⇅</span>;
+        return sortConfig.direction === 'asc' ? <ArrowUpIcon className="w-3 h-3 ml-1 inline" /> : <ArrowDownIcon className="w-3 h-3 ml-1 inline" />;
+    };
 
     return (
         <div className="bg-background text-foreground min-h-full">
@@ -77,7 +126,6 @@ const ShipmentDashboard: React.FC<ShipmentDashboardProps> = ({ contracts, onView
                 <h1 className="text-3xl font-bold">Contratos</h1>
                 
                 <div className="flex flex-wrap items-center gap-4">
-                     {/* Harvest Selector */}
                     <div className="flex items-center bg-card border rounded-md px-3 py-1.5 shadow-sm">
                         <label htmlFor="harvest-select" className="text-sm font-medium mr-2 text-muted-foreground">Cosecha:</label>
                         <select 
@@ -92,7 +140,6 @@ const ShipmentDashboard: React.FC<ShipmentDashboardProps> = ({ contracts, onView
                         </select>
                     </div>
 
-                    {/* Active Filter */}
                     <button 
                         onClick={() => setShowActiveOnly(!showActiveOnly)}
                         className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${showActiveOnly ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-card text-muted-foreground hover:bg-accent'}`}
@@ -109,30 +156,52 @@ const ShipmentDashboard: React.FC<ShipmentDashboardProps> = ({ contracts, onView
                 </div>
             </div>
             
-            {filteredContracts.length > 0 ? (
+            {filteredAndSortedContracts.length > 0 ? (
                 <div className="bg-card border rounded-lg shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-muted/50 text-muted-foreground border-b font-medium uppercase">
                                 <tr>
-                                    <th className="px-6 py-3">No. Contrato</th>
-                                    <th className="px-6 py-3">Comprador</th>
-                                    <th className="px-6 py-3">Fecha Venta</th>
-                                    <th className="px-6 py-3">Tipo Café</th>
-                                    <th className="px-6 py-3">Partidas</th>
-                                    <th className="px-6 py-3 text-right">Total qqs.</th>
+                                    <th className="px-6 py-3 cursor-pointer hover:text-foreground hover:bg-muted/80 transition-colors" onClick={() => handleSort('saleDate')}>
+                                        Fecha Venta <SortIcon column="saleDate" />
+                                    </th>
+                                    <th className="px-6 py-3 cursor-pointer hover:text-foreground hover:bg-muted/80 transition-colors" onClick={() => handleSort('contractNumber')}>
+                                        No. Contrato <SortIcon column="contractNumber" />
+                                    </th>
+                                    <th className="px-6 py-3 cursor-pointer hover:text-foreground hover:bg-muted/80 transition-colors" onClick={() => handleSort('buyer')}>
+                                        Comprador <SortIcon column="buyer" />
+                                    </th>
+                                    <th className="px-6 py-3 cursor-pointer hover:text-foreground hover:bg-muted/80 transition-colors" onClick={() => handleSort('coffeeType')}>
+                                        Tipo Café <SortIcon column="coffeeType" />
+                                    </th>
+                                    <th className="px-6 py-3 text-center">Partidas</th>
+                                    <th className="px-6 py-3 text-right cursor-pointer hover:text-foreground hover:bg-muted/80 transition-colors" onClick={() => handleSort('totalQqs')}>
+                                        Total qqs. <SortIcon column="totalQqs" />
+                                    </th>
                                     <th className="px-6 py-3 text-right">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                                {filteredContracts.map(contract => (
+                                {filteredAndSortedContracts.map(contract => (
                                     <tr key={contract.id} onClick={() => onViewContract(contract.id)} className="hover:bg-muted/30 cursor-pointer transition-colors group">
-                                        <td className="px-6 py-4 font-bold text-primary">{contract.contractNumber}</td>
-                                        <td className="px-6 py-4 font-medium">{contract.buyer}</td>
-                                        <td className="px-6 py-4 text-muted-foreground">{contract.saleDate}</td>
-                                        <td className="px-6 py-4">{contract.coffeeType}</td>
-                                        <td className="px-6 py-4 text-muted-foreground">{(Array.isArray(contract.partidas) ? contract.partidas : []).length}</td>
-                                        <td className="px-6 py-4 text-right font-mono font-medium">{calculateTotalQuintales(contract.partidas)}</td>
+                                        <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">
+                                            {new Date(contract.saleDate || contract.creationDate).toLocaleDateString('es-GT')}
+                                        </td>
+                                        <td className="px-6 py-4 font-bold text-red-600 whitespace-nowrap">
+                                            {contract.contractNumber}
+                                        </td>
+                                        <td className="px-6 py-4 font-bold text-blue-600">
+                                            {contract.buyer}
+                                        </td>
+                                        <td className="px-6 py-4 font-semibold text-green-600">
+                                            {contract.coffeeType}
+                                        </td>
+                                        <td className="px-6 py-4 text-center text-muted-foreground">
+                                            {(Array.isArray(contract.partidas) ? contract.partidas : []).length}
+                                        </td>
+                                        <td className="px-6 py-4 text-right font-mono font-bold text-foreground">
+                                            {calculateTotalQuintales(contract.partidas).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button 

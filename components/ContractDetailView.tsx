@@ -598,7 +598,7 @@ const PartidaActionMenu = ({
     );
 };
 
-// ... ContractDetailView Main Component (Updates) ...
+// ... ContractDetailView Main Component ...
 const ContractDetailView: React.FC<ContractDetailViewProps> = ({
   contract, buyers, onBack, onEditContract, onDeleteContract, onAddPartida, onEditPartida, onDeletePartida, onDuplicatePartida, onViewPartida, onUpdateContractDirectly, canEdit,
   licensePayments, setLicensePayments, logo, companyInfo, onGenerateDocumentFromPartida
@@ -658,18 +658,34 @@ const ContractDetailView: React.FC<ContractDetailViewProps> = ({
        setIsFobModalOpen(true);
   };
   
-  // ... Status Components (unchanged) ...
+  // Updated Status Components with Animations
   const FijacionStatus: React.FC<{partida: Partida}> = ({partida}) => {
     if(partida.fijacion) {
         return <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 dark:bg-green-900/50 px-2 py-1 text-xs font-bold text-green-700 dark:text-green-300 shadow-sm">+{Number(partida.fijacion).toFixed(2)}</span>
     }
-    return <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 dark:bg-red-900/50 px-2 py-1 text-xs font-medium text-red-700 dark:text-red-400"><ClockIcon className="w-3 h-3" /> Pendiente</span>
+    return (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 dark:bg-red-900/50 px-2 py-1 text-xs font-medium text-red-700 dark:text-red-400 animate-pulse">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+            </span>
+            Pendiente
+        </span>
+    );
   };
 
   const ISFStatus: React.FC<{partida: Partida}> = ({partida}) => {
       if (!partida.isfRequerido) return <span className="text-xs text-gray-400">N/A</span>;
       if (partida.isfEnviado) return <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Enviado</span>;
-      return <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">Pendiente</span>;
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10 animate-pulse">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+            </span>
+            Pendiente
+        </span>
+      );
   };
 
   const InfoItem: React.FC<{ label: string; value: React.ReactNode; className?: string }> = ({ label, value, className }) => (

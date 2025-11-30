@@ -101,9 +101,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             {/* Sidebar */}
             <aside className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-card border-r border-border transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-auto lg:flex lg:flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="h-16 flex items-center px-6 border-b border-border">
-                    <div className="flex flex-row items-center gap-2">
-                        <span className="text-lg font-bold text-green-600 leading-tight">Gestión de Exportaciones</span>
-                        <span className="text-sm font-bold text-gray-400 italic">by KAVO</span>
+                    <div className="flex items-baseline gap-2 overflow-hidden">
+                        <span className="text-lg font-bold text-green-600 whitespace-nowrap">Gestión de Exportaciones</span>
+                        <span className="text-[10px] font-bold text-gray-400 italic whitespace-nowrap">by KAVO</span>
                     </div>
                 </div>
                 <div className="flex items-center p-3 border-b border-border gap-2">
@@ -233,13 +233,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                 <ChevronDownIcon className={`w-4 h-4 text-muted-foreground transition-transform hidden sm:block ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                             </button>
                             {isUserMenuOpen && (
-                                <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-md bg-popover shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none border border-border z-10">
-                                    <div className="py-2 px-4 sm:hidden border-b mb-1">
-                                        <p className="text-sm font-semibold text-foreground">{currentUser.name}</p>
-                                        <p className="text-xs text-muted-foreground">{currentUser.email}</p>
+                                <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-md bg-popover shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none border border-border z-10">
+                                    <div className="py-3 px-4 border-b border-border mb-1">
+                                        <p className="text-sm font-semibold text-foreground truncate">{currentUser.name}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{currentUser.email}</p>
                                     </div>
                                     <div className="py-1">
-                                        <button onClick={onLogout} className="w-full text-left flex items-center gap-x-2 text-destructive px-4 py-2 text-sm hover:bg-accent">
+                                        <button onClick={onLogout} className="w-full text-left flex items-center gap-x-2 text-red-600 dark:text-red-400 px-4 py-2 text-sm hover:bg-accent transition-colors">
                                             <LogOutIcon className="w-4 h-4"/>
                                             Cerrar Sesión
                                         </button>

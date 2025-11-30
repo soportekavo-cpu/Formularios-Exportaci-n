@@ -1,6 +1,4 @@
 
-
-
 import React, { useState } from 'react';
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from '../services/firebaseConfig';
@@ -38,9 +36,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="mx-auto flex flex-col items-center gap-1 mb-8 text-center">
-            <div>
-                <span className="text-2xl font-bold text-green-600 tracking-tight">Gestión de Exportaciones</span>
-                <span className="ml-2 text-sm font-bold text-gray-400 italic">by KAVO</span>
+            <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-green-600 tracking-tight whitespace-nowrap">Gestión de Exportaciones</span>
+                <span className="text-xs font-bold text-gray-400 italic">by KAVO</span>
             </div>
         </div>
 

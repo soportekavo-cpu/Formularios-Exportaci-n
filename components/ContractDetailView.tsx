@@ -836,7 +836,7 @@ const ContractDetailView: React.FC<ContractDetailViewProps> = ({
           />
       )}
       
-      {/* ... Header and Contract Info Section (Unchanged) ... */}
+      {/* ... Header and Contract Info Section ... */}
       <div className="flex justify-between items-center mb-6">
         <button onClick={onBack} className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
           <ArrowLeftIcon className="w-5 h-5" /> Volver a Contratos
@@ -849,12 +849,7 @@ const ContractDetailView: React.FC<ContractDetailViewProps> = ({
             <h1 className="text-2xl font-bold text-red-500">Contrato: {contract.contractNumber}</h1>
             <p className="text-lg font-semibold text-foreground">{contract.buyer}</p>
           </div>
-          {canEdit && (
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button type="button" onClick={() => onEditContract(contract)} className="px-3 py-1.5 text-sm rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-input shadow-sm">Editar</button>
-              <button type="button" onClick={() => onDeleteContract(contract.id)} className="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/80 shadow-sm">Eliminar</button>
-            </div>
-          )}
+          {/* REMOVED: Edit/Delete buttons block was here */}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-y-4 gap-x-6 pt-4 pb-4">
           <InfoItem label="Exportadora" value={contract.company === 'dizano' ? 'Dizano, S.A.' : 'Proben, S.A.'} />

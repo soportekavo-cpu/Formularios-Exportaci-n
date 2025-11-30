@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Contract, Buyer, Partida, PackagingRecord, ContractCertifications, LicensePayment, Company, ExportWorkflowStep, WorkflowStepStatus, LiquidationDeduction, FobContractData, CertificateType } from '../types';
 import { ArrowLeftIcon, PlusIcon, PencilIcon, TrashIcon, ClockIcon, CubeIcon, QueueListIcon, BanknotesIcon, ExclamationTriangleIcon, CheckCircleIcon, DocumentDuplicateIcon, TruckIcon, PaperClipIcon, PaperAirplaneIcon, ArrowPathIcon, FileTextIcon, EyeIcon, DocumentPlusIcon, DotsHorizontalIcon } from './Icons';
@@ -700,16 +701,27 @@ const ContractDetailView: React.FC<ContractDetailViewProps> = ({
   const confirmDeleteFobReport = () => {
       if (!fobReportToDelete) return;
       let history = contract.fobContracts ? [...contract.fobContracts] : [];
-      if (history.length === 0 && contract.fobContractData) { history.push({...contract.fobContractData, id: 'legacy'}); }
-      const newHistory = history.filter(r => r.id !== fobReportToDelete && r.reportNo !== fobReportToDelete); 
       
-      // FIX: Explicitly clear the legacy field to prevent it from reappearing if it was the one deleted
+      // Ensure we include the legacy item in the list to be filtered if it's the only one
+      // Use 'legacy-item' to match allFobReports ID
+      if (history.length === 0 && contract.fobContractData && contract.fobContractData.reportNo) { 
+          history.push({...contract.fobContractData, id: 'legacy-item'}); 
+      }
+      
+      const newHistory = history.filter(r => {
+          // Check by ID
+          if (r.id === fobReportToDelete) return false;
+          // Check by reportNo (fallback if ID missing or matched by reportNo)
+          if (r.reportNo === fobReportToDelete) return false;
+          return true;
+      });
+      
       onUpdateContractDirectly({ 
           ...contract, 
           fobContracts: newHistory,
-          // If we delete the last item or the specific legacy item, we should clear the legacy field too
-          // Use 'undefined' as a signal to remove the field in Firestore update (or let it be overridden)
-          fobContractData: undefined 
+          // CRITICAL: We must clear the legacy backup field so it doesn't resurrect the item 
+          // when newHistory is empty.
+          fobContractData: null as any 
       });
       setFobReportToDelete(null);
   };

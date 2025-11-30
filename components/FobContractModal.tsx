@@ -20,6 +20,7 @@ const FobContractModal: React.FC<FobContractModalProps> = ({ isOpen, onClose, co
         reportNo: '',
         date: new Date().toISOString().split('T')[0],
         buyerId: '',
+        buyerName: '', // Initialize empty
         quantityText: '',
         weightText: '46.00 Kgs.',
         description: '',
@@ -43,6 +44,7 @@ const FobContractModal: React.FC<FobContractModalProps> = ({ isOpen, onClose, co
             reportNo: '',
             date: new Date().toISOString().split('T')[0],
             buyerId: buyer?.id || '',
+            buyerName: contract.buyer, // Pre-fill with contract buyer name
             quantityText: `${totalBags.toFixed(2)} ${packageType}`,
             weightText: '46.00 Kgs.',
             description: contract.coffeeType ? `ESTRICTAMENTE DURO ${contract.harvestYear || ''} - ${contract.coffeeType}`.toUpperCase() : '',
@@ -108,14 +110,17 @@ const FobContractModal: React.FC<FobContractModalProps> = ({ isOpen, onClose, co
     };
 
     const handleSave = () => {
-        const buyer = buyers.find(b => b.id === formData.buyerId);
-        if (!buyer) {
-            alert("Por favor, seleccione un comprador válido.");
-            return;
-        }
         if (!validateReportNo()) return;
+        
+        // We still need a buyer ID for the signature, but we prioritize the text input for the name
+        const buyer = buyers.find(b => b.name === contract.buyer); // Fallback to contract buyer ID
+        
+        const dataToSave = {
+            ...formData,
+            buyerId: formData.buyerId || buyer?.id || '', // Ensure ID exists for signature
+        }
 
-        onSaveData(formData);
+        onSaveData(dataToSave);
         onClose();
     };
 
@@ -144,11 +149,15 @@ const FobContractModal: React.FC<FobContractModalProps> = ({ isOpen, onClose, co
                         
                         <div>
                             <label className="block text-sm font-medium mb-1">Comprador (Buyer)</label>
-                            <select name="buyerId" value={formData.buyerId} onChange={handleChange} className={inputStyles}>
-                                <option value="">Seleccione Comprador</option>
-                                {buyers.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                            </select>
-                            <p className="text-xs text-muted-foreground mt-1">Se usará la firma guardada en el perfil del comprador.</p>
+                            <input 
+                                type="text" 
+                                name="buyerName" 
+                                value={formData.buyerName} 
+                                onChange={handleChange} 
+                                className={inputStyles} 
+                                placeholder="Nombre del Comprador"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">Puedes editar el nombre (ej: agregar "LLC"). La firma se usará automáticamente del perfil de "{contract.buyer}".</p>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">

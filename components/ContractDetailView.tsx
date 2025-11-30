@@ -598,6 +598,36 @@ const PartidaActionMenu = ({
     );
 };
 
+// --- Custom Confirmation Modal ---
+const DeleteFobModal = ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (
+    <div className="relative z-[100]" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity"></div>
+        <div className="fixed inset-0 z-[100] w-screen overflow-y-auto">
+            <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div className="relative transform overflow-hidden rounded-lg bg-card text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg border">
+                    <div className="bg-card px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                        <div className="sm:flex sm:items-start">
+                            <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-destructive/10 sm:mx-0 sm:h-10 sm:w-10">
+                                <ExclamationTriangleIcon className="h-6 w-6 text-destructive" />
+                            </div>
+                            <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                                <h3 className="text-base font-semibold leading-6 text-foreground" id="modal-title">Eliminar Informe FOB</h3>
+                                <div className="mt-2">
+                                    <p className="text-sm text-muted-foreground">¿Estás seguro de que quieres eliminar este informe? Esta acción no se puede deshacer.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-muted px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                        <button type="button" onClick={onConfirm} className="inline-flex w-full justify-center rounded-md bg-destructive px-3 py-2 text-sm font-semibold text-destructive-foreground shadow-sm hover:bg-destructive/90 sm:ml-3 sm:w-auto">Eliminar</button>
+                        <button type="button" onClick={onCancel} className="mt-3 inline-flex w-full justify-center rounded-md bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-sm ring-1 ring-inset ring-border hover:bg-accent sm:mt-0 sm:w-auto">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
 // ... ContractDetailView Main Component ...
 const ContractDetailView: React.FC<ContractDetailViewProps> = ({
   contract, buyers, onBack, onEditContract, onDeleteContract, onAddPartida, onEditPartida, onDeletePartida, onDuplicatePartida, onViewPartida, onUpdateContractDirectly, canEdit,
@@ -608,6 +638,7 @@ const ContractDetailView: React.FC<ContractDetailViewProps> = ({
   const [isFobModalOpen, setIsFobModalOpen] = useState(false);
   const [isFobViewOpen, setIsFobViewOpen] = useState(false);
   const [selectedFobReport, setSelectedFobReport] = useState<FobContractData | null>(null);
+  const [fobReportToDelete, setFobReportToDelete] = useState<string | null>(null); // State for delete modal
   const [contracts] = useLocalStorage<Contract[]>('contracts', []); 
   
   const buyer = useMemo(() => buyers.find(b => b.name === contract.buyer), [buyers, contract.buyer]);
@@ -650,18 +681,26 @@ const ContractDetailView: React.FC<ContractDetailViewProps> = ({
     }
   };
 
-  // ... Fob Handlers (unchanged) ...
+  // ... Fob Handlers ...
   const handleCreateFobReport = () => { setSelectedFobReport(null); setIsFobModalOpen(true); };
   const handleEditFobReport = (report: FobContractData) => { setSelectedFobReport(report); setIsFobModalOpen(true); };
   const handleViewFobReport = (report: FobContractData) => { setSelectedFobReport(report); setIsFobViewOpen(true); };
+  
+  // Replaced confirm() with modal state
   const handleDeleteFobReport = (id?: string) => {
       if (!id) return;
-      if (!confirm("¿Estás seguro de que quieres eliminar este informe?")) return;
+      setFobReportToDelete(id);
+  };
+
+  const confirmDeleteFobReport = () => {
+      if (!fobReportToDelete) return;
       let history = contract.fobContracts ? [...contract.fobContracts] : [];
       if (history.length === 0 && contract.fobContractData) { history.push({...contract.fobContractData, id: 'legacy'}); }
-      const newHistory = history.filter(r => r.id !== id && r.reportNo !== id); 
+      const newHistory = history.filter(r => r.id !== fobReportToDelete && r.reportNo !== fobReportToDelete); 
       onUpdateContractDirectly({ ...contract, fobContracts: newHistory });
+      setFobReportToDelete(null);
   };
+
   const handleDuplicateFobReport = (report: FobContractData) => {
        const { id, reportNo, ...rest } = report;
        setSelectedFobReport({ ...rest, reportNo: '', id: undefined } as FobContractData);
@@ -735,6 +774,14 @@ const ContractDetailView: React.FC<ContractDetailViewProps> = ({
 
   return (
     <div>
+      {/* Delete Modal */}
+      {fobReportToDelete && (
+          <DeleteFobModal 
+            onConfirm={confirmDeleteFobReport} 
+            onCancel={() => setFobReportToDelete(null)} 
+          />
+      )}
+
       {isFobModalOpen && (
           <FobContractModal 
             isOpen={isFobModalOpen} 

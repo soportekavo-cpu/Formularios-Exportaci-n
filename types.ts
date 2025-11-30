@@ -352,6 +352,7 @@ export interface FobContractData {
     reportNo: string;
     date: string;
     buyerId: string;
+    buyerName?: string; // Nuevo campo para permitir edición del nombre en el PDF
     quantityText: string;
     weightText: string;
     description: string;

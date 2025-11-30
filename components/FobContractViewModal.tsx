@@ -22,7 +22,7 @@ const FobContractViewModal: React.FC<FobContractViewModalProps> = ({ isOpen, onC
     const pdfData = {
         ...data,
         price: Number(data.price),
-        buyerName: buyer.name,
+        buyerName: data.buyerName || buyer.name, // Prefer custom name if edited, else original
         buyerSignature: buyer.signature
     };
 

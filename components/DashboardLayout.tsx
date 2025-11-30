@@ -100,10 +100,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
             {/* Sidebar */}
             <aside className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-card border-r border-border transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-auto lg:flex lg:flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                <div className="h-16 flex items-center px-6 border-b border-border">
-                    <div className="flex items-baseline gap-2 overflow-hidden">
-                        <span className="text-lg font-bold text-green-600 whitespace-nowrap">Gestión de Exportaciones</span>
-                        <span className="text-[10px] font-bold text-gray-400 italic whitespace-nowrap">by KAVO</span>
+                <div className="h-20 flex items-center px-6 border-b border-border">
+                    <div className="flex flex-col justify-center w-full">
+                        <span className="text-lg font-bold text-green-600 leading-tight">Gestión de Exportaciones</span>
+                        <span className="text-[10px] font-bold text-gray-400 italic whitespace-nowrap mt-0.5">by KAVO</span>
                     </div>
                 </div>
                 <div className="flex items-center p-3 border-b border-border gap-2">

@@ -12,6 +12,7 @@ interface HomeDashboardProps {
     setView: (view: any) => void;
     setViewingContractId: (id: string | null) => void;
     setActiveCertType: (type: CertificateType) => void;
+    onNavigateToContract: (contractId: string, tab: 'partidas' | 'empaque' | 'liquidaciones' | 'documentos') => void;
 }
 
 const getPartidaPrefix = (company: string) => {
@@ -63,7 +64,7 @@ const InventoryMetric = ({ label, current, total, colorClass }: { label: string,
     );
 };
 
-const ContractPackagingRow: React.FC<{ contractData: any, onClick: () => void, prefix: string }> = ({ contractData, onClick, prefix }) => {
+const ContractPackagingRow: React.FC<{ contractData: any, onClick: () => void, prefix: string, onDetailClick: () => void }> = ({ contractData, onClick, prefix, onDetailClick }) => {
     const [expanded, setExpanded] = useState(false);
 
     return (
@@ -129,7 +130,7 @@ const ContractPackagingRow: React.FC<{ contractData: any, onClick: () => void, p
                                 </div>
 
                                 <button 
-                                    onClick={(e) => { e.stopPropagation(); onClick(); }}
+                                    onClick={(e) => { e.stopPropagation(); onDetailClick(); }}
                                     className="text-xs font-semibold text-primary hover:underline whitespace-nowrap self-start sm:self-center"
                                 >
                                     Ver Detalle &rarr;
@@ -143,7 +144,7 @@ const ContractPackagingRow: React.FC<{ contractData: any, onClick: () => void, p
     );
 };
 
-const HomeDashboard: React.FC<HomeDashboardProps> = ({ contracts, shipments, certificates, alerts, activeCompany, setPage, setView, setViewingContractId, setActiveCertType }) => {
+const HomeDashboard: React.FC<HomeDashboardProps> = ({ contracts, shipments, certificates, alerts, activeCompany, setPage, setView, setViewingContractId, setActiveCertType, onNavigateToContract }) => {
     
     const activeContracts = contracts.filter(c => !c.isTerminated && c.company === activeCompany);
     const totalQuintales = activeContracts.reduce((sum, c) => {
@@ -330,6 +331,7 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({ contracts, shipments, cer
                                         contractData={contract} 
                                         prefix={prefix}
                                         onClick={() => { setPage('shipments'); setViewingContractId(contract.id); }}
+                                        onDetailClick={() => onNavigateToContract(contract.id, 'empaque')}
                                     />
                                 ))
                             ) : (

@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Contract, Buyer, Partida, PackagingRecord, ContractCertifications, LicensePayment, Company, ExportWorkflowStep, WorkflowStepStatus, LiquidationDeduction, FobContractData, CertificateType } from '../types';
 import { ArrowLeftIcon, PlusIcon, PencilIcon, TrashIcon, ClockIcon, CubeIcon, QueueListIcon, BanknotesIcon, ExclamationTriangleIcon, CheckCircleIcon, DocumentDuplicateIcon, TruckIcon, PaperClipIcon, PaperAirplaneIcon, ArrowPathIcon, FileTextIcon, EyeIcon, DocumentPlusIcon, DotsHorizontalIcon } from './Icons';
@@ -27,6 +26,7 @@ interface ContractDetailViewProps {
   setLicensePayments: React.Dispatch<React.SetStateAction<LicensePayment[]>>;
   logo: string | null;
   companyInfo: CompanyInfo;
+  initialTab?: 'partidas' | 'empaque' | 'liquidaciones' | 'documentos';
 }
 
 const TAX_RATE = 0.025; // 2.5%
@@ -631,10 +631,15 @@ const DeleteFobModal = ({ onConfirm, onCancel }: { onConfirm: () => void, onCanc
 // ... ContractDetailView Main Component ...
 const ContractDetailView: React.FC<ContractDetailViewProps> = ({
   contract, buyers, onBack, onEditContract, onDeleteContract, onAddPartida, onEditPartida, onDeletePartida, onDuplicatePartida, onViewPartida, onUpdateContractDirectly, canEdit,
-  licensePayments, setLicensePayments, logo, companyInfo, onGenerateDocumentFromPartida
+  licensePayments, setLicensePayments, logo, companyInfo, onGenerateDocumentFromPartida, initialTab = 'partidas'
 }) => {
-  // ... existing state ...
-  const [activeTab, setActiveTab] = useState<'partidas' | 'empaque' | 'liquidaciones' | 'documentos'>('partidas');
+  // Initialize tab state from prop
+  const [activeTab, setActiveTab] = useState<'partidas' | 'empaque' | 'liquidaciones' | 'documentos'>(initialTab);
+  
+  useEffect(() => {
+      setActiveTab(initialTab);
+  }, [initialTab]);
+
   const [isFobModalOpen, setIsFobModalOpen] = useState(false);
   const [isFobViewOpen, setIsFobViewOpen] = useState(false);
   const [selectedFobReport, setSelectedFobReport] = useState<FobContractData | null>(null);
@@ -697,7 +702,15 @@ const ContractDetailView: React.FC<ContractDetailViewProps> = ({
       let history = contract.fobContracts ? [...contract.fobContracts] : [];
       if (history.length === 0 && contract.fobContractData) { history.push({...contract.fobContractData, id: 'legacy'}); }
       const newHistory = history.filter(r => r.id !== fobReportToDelete && r.reportNo !== fobReportToDelete); 
-      onUpdateContractDirectly({ ...contract, fobContracts: newHistory });
+      
+      // FIX: Explicitly clear the legacy field to prevent it from reappearing if it was the one deleted
+      onUpdateContractDirectly({ 
+          ...contract, 
+          fobContracts: newHistory,
+          // If we delete the last item or the specific legacy item, we should clear the legacy field too
+          // Use 'undefined' as a signal to remove the field in Firestore update (or let it be overridden)
+          fobContractData: undefined 
+      });
       setFobReportToDelete(null);
   };
 
@@ -768,7 +781,13 @@ const ContractDetailView: React.FC<ContractDetailViewProps> = ({
 
   const allFobReports = useMemo(() => {
       let history = contract.fobContracts ? [...contract.fobContracts] : [];
-      if (history.length === 0 && contract.fobContractData) { history.push({ ...contract.fobContractData, id: 'legacy-item' }); }
+      // Include legacy data if present and not already in history (by ID or naive check)
+      if (history.length === 0 && contract.fobContractData) { 
+          // Only add if it has content
+          if(contract.fobContractData.reportNo) {
+              history.push({ ...contract.fobContractData, id: 'legacy-item' }); 
+          }
+      }
       return history.filter(h => h).sort((a, b) => (b.reportNo || '').localeCompare(a.reportNo || ''));
   }, [contract]);
 

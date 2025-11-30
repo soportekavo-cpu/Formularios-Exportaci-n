@@ -127,6 +127,9 @@ export default function App() {
   const [isAddShipmentModalOpen, setIsAddShipmentModalOpen] = useState(false);
   const [contractForNewShipment, setContractForNewShipment] = useState<Contract | null>(null);
   const [viewingContractId, setViewingContractId] = useState<string | null>(null);
+  // NEW: State to control which tab to open in ContractDetailView
+  const [initialContractTab, setInitialContractTab] = useState<'partidas' | 'empaque' | 'liquidaciones' | 'documentos'>('partidas');
+
   const [liquidationContractId, setLiquidationContractId] = useState<string | null>(null);
 
   const [partidaModalState, setPartidaModalState] = useState<{
@@ -456,7 +459,15 @@ export default function App() {
   };
 
   const handleGoToLiquidation = (contractId: string) => { setLiquidationContractId(contractId); setPage('liquidaciones'); setViewingContractId(null); };
-  const handleAlertClick = (alert: AlertItem) => { setPage('shipments'); setViewingContractId(alert.contractId); }
+  
+  // New handler to navigate to specific tab in contract view
+  const handleNavigateToContract = (contractId: string, tab: 'partidas' | 'empaque' | 'liquidaciones' | 'documentos' = 'partidas') => {
+      setInitialContractTab(tab);
+      setViewingContractId(contractId);
+      setPage('shipments');
+  };
+
+  const handleAlertClick = (alert: AlertItem) => { handleNavigateToContract(alert.contractId, 'partidas'); }
   const handleOpenAddShipmentModal = (contract: Contract) => { setContractForNewShipment(contract); setIsAddShipmentModalOpen(true); };
   
   const handleSaveNewShipment = async (data: { destination: string; partidaIds: string[] }) => {
@@ -574,9 +585,10 @@ export default function App() {
                 setView={setView}
                 setViewingContractId={setViewingContractId}
                 setActiveCertType={setActiveCertType}
+                onNavigateToContract={handleNavigateToContract}
             /> 
         )}
-        {page === 'shipments' && hasPermission('contracts', 'view') && ( viewingContract ? ( <ContractDetailView contract={viewingContract} buyers={buyers || []} onBack={() => setViewingContractId(null)} onEditContract={handleOpenContractModal} onDeleteContract={handleDeleteContract} onAddPartida={() => handleOpenPartidaModal(viewingContract.id, null)} onDuplicatePartida={handleDuplicatePartida} onEditPartida={(partida) => handleOpenPartidaModal(viewingContract.id, partida)} onDeletePartida={(partidaId) => handleDeletePartida(viewingContract.id, partidaId)} onViewPartida={(partida) => handleOpenPartidaModal(viewingContract.id, partida, true)} onUpdateContractDirectly={handleUpdateContractDirectly} onGoToLiquidation={handleGoToLiquidation} onGenerateDocumentFromPartida={handleGenerateDocumentFromPartida} canEdit={canEditContracts} licensePayments={licensePayments || []} setLicensePayments={(val) => {/* Manual wiring needed for complex state, skipping for simplicity in this turn or passing CRUD wrapper */}} logo={activeCompany === 'dizano' ? dizanoLogo : probenLogo} companyInfo={activeCompany === 'dizano' ? dizanoSettings : probenSettings} /> ) : ( <ShipmentDashboard contracts={filteredContracts} onViewContract={setViewingContractId} onAddContract={(harvestYear) => handleOpenContractModal(harvestYear ? { harvestYear } : null)} onEditContract={handleOpenContractModal} onDeleteContract={handleDeleteContract} canEdit={canEditContracts} /> ) )}
+        {page === 'shipments' && hasPermission('contracts', 'view') && ( viewingContract ? ( <ContractDetailView contract={viewingContract} buyers={buyers || []} onBack={() => setViewingContractId(null)} onEditContract={handleOpenContractModal} onDeleteContract={handleDeleteContract} onAddPartida={() => handleOpenPartidaModal(viewingContract.id, null)} onDuplicatePartida={handleDuplicatePartida} onEditPartida={(partida) => handleOpenPartidaModal(viewingContract.id, partida)} onDeletePartida={(partidaId) => handleDeletePartida(viewingContract.id, partidaId)} onViewPartida={(partida) => handleOpenPartidaModal(viewingContract.id, partida, true)} onUpdateContractDirectly={handleUpdateContractDirectly} onGoToLiquidation={handleGoToLiquidation} onGenerateDocumentFromPartida={handleGenerateDocumentFromPartida} canEdit={canEditContracts} licensePayments={licensePayments || []} setLicensePayments={(val) => {/* Manual wiring needed for complex state, skipping for simplicity in this turn or passing CRUD wrapper */}} logo={activeCompany === 'dizano' ? dizanoLogo : probenLogo} companyInfo={activeCompany === 'dizano' ? dizanoSettings : probenSettings} initialTab={initialContractTab} /> ) : ( <ShipmentDashboard contracts={filteredContracts} onViewContract={setViewingContractId} onAddContract={(harvestYear) => handleOpenContractModal(harvestYear ? { harvestYear } : null)} onEditContract={handleOpenContractModal} onDeleteContract={handleDeleteContract} canEdit={canEditContracts} /> ) )}
         {page === 'documents' && renderDocumentsContent()}
         {page === 'liquidaciones' && hasPermission('liquidaciones', 'view') && ( <LicenseSettlementDashboard contracts={(Array.isArray(contracts) ? contracts : []).filter(c => c && c.isLicenseRental && c.company === activeCompany)} payments={licensePayments || []} setPayments={() => {}} /* Placeholder */ buyers={buyers || []} setContracts={() => {}} /* Placeholder */ initialContractId={liquidationContractId} dizanoLogo={dizanoLogo} probenLogo={probenLogo} dizanoInfo={dizanoSettings} probenInfo={probenSettings} /> )}
         {page === 'admin' && hasPermission('admin', 'view') && (

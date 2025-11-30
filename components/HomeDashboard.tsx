@@ -1,4 +1,5 @@
 
+
 import React, { useMemo } from 'react';
 import { ShipIcon, FileTextIcon, ExclamationTriangleIcon, CheckCircleIcon, ClockIcon, CubeIcon } from './Icons';
 import type { Contract, Shipment, Certificate, PackagingRecord, CertificateType } from '../types';
@@ -55,6 +56,14 @@ const ProgressBar = ({ current, total, color = 'bg-blue-600' }: { current: numbe
     );
 };
 
+interface GroupedPartidaItem {
+    contractId: string;
+    contractNo: string;
+    partidaId: string;
+    partidaNo: string;
+    items: Array<{ material: string; missing: number; required: number; purchased: number }>;
+}
+
 const HomeDashboard: React.FC<HomeDashboardProps> = ({ contracts, shipments, certificates, alerts, activeCompany, setPage, setView, setViewingContractId, setActiveCertType }) => {
     
     // Calculate Stats
@@ -68,21 +77,13 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({ contracts, shipments, cer
     // --- PACKAGING LOGIC ---
     // Calculates what is required vs purchased for ALL active partidas
     const packagingData = useMemo(() => {
-        const missingItems: Array<{
-            contractId: string,
-            contractNo: string,
-            partidaId: string,
-            partidaNo: string,
-            material: string,
-            required: number,
-            purchased: number,
-            missing: number
-        }> = [];
+        const groupedItems: Record<string, GroupedPartidaItem> = {};
 
         const summary = {
             sacos: { req: 0, bought: 0 },
             grainpro: { req: 0, bought: 0 },
             bigbag: { req: 0, bought: 0 },
+            jumbo: { req: 0, bought: 0 },
             totalItemsMissing: 0
         };
 
@@ -105,6 +106,8 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({ contracts, shipments, cer
                             records.push({ itemName: 'Sacos de Yute', required: qty, purchased: 0 });
                         } else if (type.includes('Big Bag')) {
                             records.push({ itemName: 'Big Bag', required: qty, purchased: 0 });
+                        } else if (type.includes('Jumbo')) {
+                            records.push({ itemName: 'Jumbo', required: qty, purchased: 0 });
                         }
                     }
                 }
@@ -117,14 +120,23 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({ contracts, shipments, cer
                     if (nameLower.includes('saco')) { summary.sacos.req += rec.required; summary.sacos.bought += rec.purchased; }
                     else if (nameLower.includes('grainpro')) { summary.grainpro.req += rec.required; summary.grainpro.bought += rec.purchased; }
                     else if (nameLower.includes('big')) { summary.bigbag.req += rec.required; summary.bigbag.bought += rec.purchased; }
+                    else if (nameLower.includes('jumbo')) { summary.jumbo.req += rec.required; summary.jumbo.bought += rec.purchased; }
 
                     if (missing > 0) {
                         summary.totalItemsMissing += missing;
-                        missingItems.push({
-                            contractId: contract.id,
-                            contractNo: contract.contractNumber,
-                            partidaId: partida.id,
-                            partidaNo: getPartidaPrefix(activeCompany) + partida.partidaNo,
+                        
+                        const groupKey = `${contract.id}-${partida.id}`;
+                        if (!groupedItems[groupKey]) {
+                            groupedItems[groupKey] = {
+                                contractId: contract.id,
+                                contractNo: contract.contractNumber,
+                                partidaId: partida.id,
+                                partidaNo: getPartidaPrefix(activeCompany) + partida.partidaNo,
+                                items: []
+                            };
+                        }
+                        
+                        groupedItems[groupKey].items.push({
                             material: rec.itemName,
                             required: rec.required,
                             purchased: rec.purchased,
@@ -135,7 +147,7 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({ contracts, shipments, cer
             });
         });
 
-        return { missingItems, summary };
+        return { missingPartidas: Object.values(groupedItems), summary };
     }, [activeContracts, activeCompany]);
 
     const recentDocs = certificates
@@ -201,7 +213,7 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({ contracts, shipments, cer
                                 <p className="text-sm text-muted-foreground">Materiales pendientes de compra por partida.</p>
                             </div>
                             <span className="text-xs font-bold bg-red-100 text-red-700 px-3 py-1 rounded-full border border-red-200">
-                                {packagingData.missingItems.length} Partidas Incompletas
+                                {packagingData.missingPartidas.length} Partidas Incompletas
                             </span>
                         </div>
                         <div className="overflow-x-auto">
@@ -209,18 +221,16 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({ contracts, shipments, cer
                                 <thead className="bg-muted/50 text-muted-foreground font-medium border-b">
                                     <tr>
                                         <th className="px-6 py-3">Contrato / Partida</th>
-                                        <th className="px-6 py-3">Material</th>
-                                        <th className="px-6 py-3 text-center">Requerido</th>
-                                        <th className="px-6 py-3 text-center">Comprado</th>
-                                        <th className="px-6 py-3 text-right">Faltante</th>
+                                        <th className="px-6 py-3">Materiales Pendientes</th>
+                                        <th className="px-6 py-3 text-right">Faltante Total</th>
                                         <th className="px-6 py-3 text-center">Estado</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
-                                    {packagingData.missingItems.length > 0 ? (
-                                        packagingData.missingItems.map((item, idx) => (
+                                    {packagingData.missingPartidas.length > 0 ? (
+                                        packagingData.missingPartidas.map((item) => (
                                             <tr 
-                                                key={`${item.partidaId}-${idx}`} 
+                                                key={item.partidaId} 
                                                 className="hover:bg-muted/30 transition-colors cursor-pointer"
                                                 onClick={() => { setPage('shipments'); setViewingContractId(item.contractId); }}
                                             >
@@ -228,10 +238,19 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({ contracts, shipments, cer
                                                     <div className="font-bold text-foreground">{item.contractNo}</div>
                                                     <div className="text-xs text-muted-foreground">{item.partidaNo}</div>
                                                 </td>
-                                                <td className="px-6 py-4 font-medium text-amber-700 dark:text-amber-400">{item.material}</td>
-                                                <td className="px-6 py-4 text-center">{item.required}</td>
-                                                <td className="px-6 py-4 text-center">{item.purchased}</td>
-                                                <td className="px-6 py-4 text-right font-bold text-red-600">-{item.missing}</td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col gap-1">
+                                                        {item.items.map((mat, idx) => (
+                                                            <div key={idx} className="flex justify-between text-xs">
+                                                                <span className="font-medium text-amber-700 dark:text-amber-400">{mat.material}</span>
+                                                                <span className="text-muted-foreground">({mat.purchased}/{mat.required})</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right font-bold text-red-600">
+                                                    -{item.items.reduce((sum, i) => sum + i.missing, 0)}
+                                                </td>
                                                 <td className="px-6 py-4 text-center">
                                                     <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800 uppercase tracking-wide">
                                                         Pendiente
@@ -241,7 +260,7 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({ contracts, shipments, cer
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
+                                            <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
                                                 <CheckCircleIcon className="w-12 h-12 mx-auto text-green-500 mb-3 opacity-50" />
                                                 <p>Todo el material de empaque ha sido comprado.</p>
                                             </td>
@@ -279,6 +298,16 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({ contracts, shipments, cer
                                 </div>
                                 <ProgressBar current={packagingData.summary.bigbag.bought} total={packagingData.summary.bigbag.req} color="bg-blue-600" />
                             </div>
+                            {/* Jumbo Section - Only show if required > 0 */}
+                            {packagingData.summary.jumbo.req > 0 && (
+                                <div>
+                                    <div className="flex justify-between text-sm mb-2">
+                                        <span className="text-muted-foreground">Jumbos</span>
+                                        <span className="font-medium">{packagingData.summary.jumbo.bought} / {packagingData.summary.jumbo.req}</span>
+                                    </div>
+                                    <ProgressBar current={packagingData.summary.jumbo.bought} total={packagingData.summary.jumbo.req} color="bg-purple-600" />
+                                </div>
+                            )}
                         </div>
                         <div className="mt-8 pt-6 border-t border-border">
                             <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900 rounded-lg">

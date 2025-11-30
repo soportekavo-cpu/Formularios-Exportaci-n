@@ -212,6 +212,7 @@ export interface Partida {
     sealNo?: string;
     etd?: string; // Estimated Time of Departure (Zarpe)
     cutOffPort?: string; // New field: Fecha Cut Off Puerto
+    blNumber?: string; // NEW: Número de BL
     blAttachment?: DocumentAttachment;
 
     // Fiscal
